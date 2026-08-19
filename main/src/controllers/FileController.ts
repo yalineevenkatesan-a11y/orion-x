@@ -119,16 +119,28 @@ export function initializeFileController(): void {
     function buildFileTree(dirPath: string): any {
         const stats = fsNode.statSync(dirPath);
         if (!stats.isDirectory()) {
-            return { name: pathNode.basename(dirPath), type: 'file' };
+            return { name: pathNode.basename(dirPath), type: 'file', path: dirPath };
         }
         const ignores = ['.git', 'node_modules', 'dist', '.next', 'out'];
-        const children = fsNode.readdirSync(dirPath)
-          .filter((child: string) => !ignores.includes(child))
-          .map((child: string) => buildFileTree(pathNode.join(dirPath, child)));
-        return { name: pathNode.basename(dirPath), type: 'dir', children };
+        let children = [];
+        try {
+          children = fsNode.readdirSync(dirPath)
+            .filter((child: string) => !ignores.includes(child))
+            .map((child: string) => buildFileTree(pathNode.join(dirPath, child)));
+        } catch (e) {}
+        return { name: pathNode.basename(dirPath), type: 'dir', children, path: dirPath };
     }
     const targetPath = rootPath || process.cwd(); 
     return buildFileTree(targetPath);
+  });
+
+  ipcMain.handle('fs:readFile', async (event, filePath) => {
+      const fsNode = require('fs');
+      try {
+          return fsNode.readFileSync(filePath, 'utf-8');
+      } catch (e) {
+          return "Error reading file stream.";
+      }
   });
 }
 export default initializeFileController;

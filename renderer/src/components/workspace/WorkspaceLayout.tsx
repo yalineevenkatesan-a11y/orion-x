@@ -15,7 +15,7 @@ import { useWorkspaceUi } from '../../context/WorkspaceUiContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import NeuralGraphDashboard from './NeuralGraphDashboard';
 
-const FileTreeNode = ({ node, depth = 0 }: { node: any; depth?: number }) => {
+const FileTreeNode = ({ node, depth = 0, onFileSelect }: { node: any; depth?: number, onFileSelect: (n: any) => void }) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const indent = depth > 0 ? '1.5rem' : '0';
 
@@ -31,7 +31,7 @@ const FileTreeNode = ({ node, depth = 0 }: { node: any; depth?: number }) => {
                 {isExpanded && (
                     <div className="border-l border-[#2A2A35] ml-2 pl-2">
                         {node.children?.map((child: any, i: number) => (
-                            <FileTreeNode key={`${child.name}-${i}`} node={child} depth={depth + 1} />
+                            <FileTreeNode key={`${child.name}-${i}`} node={child} depth={depth + 1} onFileSelect={onFileSelect} />
                         ))}
                     </div>
                 )}
@@ -39,7 +39,7 @@ const FileTreeNode = ({ node, depth = 0 }: { node: any; depth?: number }) => {
         );
     }
     return (
-        <div className="text-[#A0AEC0] cursor-pointer hover:text-white py-1 select-none" style={{ marginLeft: indent }}>
+        <div onClick={() => onFileSelect(node)} className="text-[#A0AEC0] cursor-pointer hover:text-white py-1 select-none" style={{ marginLeft: indent }}>
             <span className="text-[#00D2FF]">|--</span> {node.name}
         </div>
     );
@@ -53,6 +53,13 @@ export function WorkspaceLayout() {
   const [windowSize, setWindowSize] = useState({ width: 1920, height: 1080 });
   const [showOptions, setShowOptions] = useState(false);
   const [activeView, setActiveView] = useState<string | null>(null);
+  const [activeFile, setActiveFile] = useState<{name: string, content: string, path: string} | null>(null);
+
+  const handleFileClick = async (node: any) => {
+      const content = await (window as any).electronAPI?.ipcRenderer?.invoke('fs:readFile', node.path);
+      setActiveFile({ name: node.name, content, path: node.path });
+      setActiveView('file-viewer');
+  };
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -219,7 +226,68 @@ export function WorkspaceLayout() {
                 
                 {/* Live Data File Tree */}
                 <div className="font-mono text-sm leading-8">
-                    {fileTree ? <FileTreeNode node={fileTree} /> : <div className="text-[#A0AEC0]">SCANNING NEURAL DIRECTORY...</div>}
+                    {fileTree ? <FileTreeNode node={fileTree} onFileSelect={handleFileClick} /> : <div className="text-[#A0AEC0]">SCANNING NEURAL DIRECTORY...</div>}
+                </div>
+            </div>
+        )}
+
+        {activeView === 'file-viewer' && activeFile && (
+            <div className="fixed inset-0 z-50 flex bg-[#0B0B10]">
+                {/* Left Panel (File Info) */}
+                <div className="w-[350px] border-r border-[#1E1E26] flex flex-col">
+                    <div className="p-4 border-b border-[#1E1E26] text-white font-bold text-sm tracking-widest">
+                        [ FILE INFORMATION PANEL ]
+                    </div>
+                    <div className="p-4 flex flex-col gap-4 text-xs font-mono text-[#A0AEC0]">
+                        <div>
+                            <div className="text-[#E2E8F0] mb-2 cursor-pointer">[-] BASIC INFORMATION</div>
+                            <div className="pl-4 flex flex-col gap-1">
+                                <div><span className="text-[#00D2FF]">Name:</span> {activeFile.name}</div>
+                                <div><span className="text-[#00D2FF]">Path:</span> {activeFile.path}</div>
+                                <div><span className="text-[#00D2FF]">Size:</span> {activeFile.content.length} Bytes</div>
+                            </div>
+                        </div>
+                        <div>
+                            <div className="text-[#E2E8F0] cursor-pointer">[+] CODE INFORMATION</div>
+                        </div>
+                        <div>
+                            <div className="text-[#E2E8F0] cursor-pointer">[+] DEPENDENCIES</div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Center Panel (Code View) */}
+                <div className="flex-1 flex flex-col bg-[#0B0B10]">
+                    <div className="h-14 border-b border-[#1E1E26] flex items-center px-4 gap-6 text-xs font-bold text-[#E2E8F0]">
+                        <div className="cursor-pointer hover:text-[#00D2FF]">[G] GRAPH VIEW</div>
+                        <div className="cursor-pointer hover:text-[#00D2FF]">[F] GRAPH FILTERS</div>
+                        <div className="cursor-pointer hover:text-[#00D2FF]">[O] OPTIONS</div>
+                        <div className="flex-1"></div>
+                        <div className="w-64 border border-[#1E1E26] rounded px-3 py-1 bg-[#15151C] text-[#A0AEC0]">
+                            [SEARCH] Search nodes, paths, risk:high...
+                        </div>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-6">
+                        <pre className="font-mono text-sm text-[#A0AEC0] whitespace-pre-wrap">
+                            {activeFile.content}
+                        </pre>
+                    </div>
+                </div>
+
+                {/* Right Panel (AI Stream) */}
+                <div className="w-[300px] border-l border-[#1E1E26] flex flex-col bg-[#0B0B10]">
+                    <div className="h-14 border-b border-[#1E1E26] flex items-center justify-end px-4">
+                        <button 
+                            onClick={() => setActiveView('files')}
+                            className="text-xs font-bold text-[#E2E8F0] border border-[#1E1E26] px-3 py-1 hover:border-[#00D2FF]"
+                        >
+                            [ &lt; BACK TO TREE ]
+                        </button>
+                    </div>
+                    <div className="flex-1 flex flex-col items-center justify-center text-[#A0AEC0] text-xs font-mono gap-4">
+                        <div className="w-8 h-8 border-t-2 border-[#00D2FF] border-solid rounded-full animate-spin"></div>
+                        <div>LOADING FILE STREAM...</div>
+                    </div>
                 </div>
             </div>
         )}
