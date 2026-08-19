@@ -111,11 +111,11 @@ export function WorkspaceLayout() {
         {/* Restored Layout Elements */}
         
         {/* Top-Left Control Cluster */}
-        <div className="absolute top-6 left-6 z-50 flex flex-row items-center gap-8">
+        <div className="absolute top-6 left-6 z-50 flex flex-row items-center gap-8 pointer-events-auto" style={{ WebkitAppRegion: 'no-drag' } as any}>
           <div className="flex items-center gap-3">
             <div className="relative">
               <button 
-                onClick={() => setShowOptions(!showOptions)}
+                onClick={() => setShowOptions((prev) => !prev)}
                 className="px-4 py-2 bg-[#0B0B10] border border-[#1E1E26] outline-none focus:outline-none text-xs font-bold text-[#E2E8F0] uppercase tracking-widest hover:border-[#00D2FF]"
               >
                 OPTIONS
