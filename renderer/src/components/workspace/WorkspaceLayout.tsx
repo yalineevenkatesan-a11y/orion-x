@@ -41,6 +41,34 @@ export function WorkspaceLayout() {
     return () => clearTimeout(timer);
   }, []);
 
+  const [fileTree, setFileTree] = useState<any>(null);
+
+  useEffect(() => {
+    if (activeView === 'files') {
+      (window as any).electronAPI?.ipcRenderer?.invoke('fs:getTreeData').then((data: any) => setFileTree(data));
+    }
+  }, [activeView]);
+
+  const renderTree = (node: any, depth = 0): any => {
+    if (!node) return null;
+    const padding = { paddingLeft: `${depth * 1.5}rem` };
+    if (node.type === 'dir') {
+      return (
+        <div key={node.name}>
+          <div style={padding} className="text-[#00D2FF] py-1 cursor-pointer hover:text-white transition-colors">
+            [+] [DIR] {node.name}
+          </div>
+          <div>{node.children?.map((child: any) => renderTree(child, depth + 1))}</div>
+        </div>
+      );
+    }
+    return (
+      <div key={node.name} style={padding} className="text-[#A0AEC0] py-1 cursor-pointer hover:text-white transition-colors">
+        |-- {node.name}
+      </div>
+    );
+  };
+
   const isActive = bootState === 'active';
 
   return (
@@ -145,20 +173,14 @@ export function WorkspaceLayout() {
         </div>
 
         {activeView === 'files' && (
-            <div className="absolute top-24 left-6 w-[450px] bg-[#0B0B10] border border-[#1E1E26] z-40 p-4 font-mono text-xs text-[#E2E8F0]">
-                <div className="flex items-center justify-between border-b border-[#1E1E26] pb-2 mb-4">
-                    <span className="font-bold tracking-widest">[ FILE SYSTEM ]</span>
-                    <button onClick={() => setActiveView(null)} className="text-[#A0AEC0] hover:text-white">CLOSE</button>
+            <div className="absolute top-24 left-6 w-[800px] h-[70vh] bg-[#0B0B10] border border-[#1E1E26] z-40 p-8 font-mono text-sm overflow-y-auto shadow-2xl">
+                <div className="flex flex-col border-b border-[#1E1E26] pb-4 mb-6 relative">
+                    <span className="font-bold tracking-widest text-lg text-white">[ FILE SYSTEM ]</span>
+                    <span className="text-xs text-[#A0AEC0] mt-1">Structural Workspace Context</span>
+                    <button onClick={() => setActiveView(null)} className="absolute top-0 right-0 text-[#A0AEC0] hover:text-white">CLOSE [x]</button>
                 </div>
-                <div className="flex flex-col gap-2">
-                    <div className="text-[#00D2FF]">[+] [DIR] .github</div>
-                    <div className="text-[#00D2FF]">[-] [DIR] scripts</div>
-                    <div className="pl-4 text-[#A0AEC0]">|-- check_readme.py</div>
-                    <div className="pl-4 text-[#A0AEC0]">|-- linkcheck-domains.txt</div>
-                    <div className="pl-4 text-[#A0AEC0]">|-- lint-allow-duplicates.txt</div>
-                    <div className="text-[#A0AEC0]">|-- CONTRIBUTING.md</div>
-                    <div className="text-[#A0AEC0]">|-- LICENSE.md</div>
-                    <div className="text-[#A0AEC0]">|-- README.md</div>
+                <div className="flex flex-col">
+                    {fileTree ? renderTree(fileTree) : <div className="text-[#A0AEC0]">SCANNING NEURAL DIRECTORY...</div>}
                 </div>
             </div>
         )}

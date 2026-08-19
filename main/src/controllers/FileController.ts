@@ -112,5 +112,23 @@ export function initializeFileController(): void {
       return { nodes: [], edges: [] };
     }
   });
+
+  ipcMain.handle('fs:getTreeData', async (event, rootPath) => {
+    const fsNode = require('fs');
+    const pathNode = require('path');
+    function buildFileTree(dirPath: string): any {
+        const stats = fsNode.statSync(dirPath);
+        if (!stats.isDirectory()) {
+            return { name: pathNode.basename(dirPath), type: 'file' };
+        }
+        const ignores = ['.git', 'node_modules', 'dist', '.next', 'out'];
+        const children = fsNode.readdirSync(dirPath)
+          .filter((child: string) => !ignores.includes(child))
+          .map((child: string) => buildFileTree(pathNode.join(dirPath, child)));
+        return { name: pathNode.basename(dirPath), type: 'dir', children };
+    }
+    const targetPath = rootPath || process.cwd(); 
+    return buildFileTree(targetPath);
+  });
 }
 export default initializeFileController;
