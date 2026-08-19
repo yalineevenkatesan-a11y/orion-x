@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron'; 
+import { app, BrowserWindow, ipcMain } from 'electron'; 
 import path from 'path'; 
 import { BootstrapEngine } from './core/BootstrapEngine'; 
 import { DatabaseEngine } from './database/DatabaseEngine'; 
@@ -35,6 +35,14 @@ async function startApplication(): Promise<void> {
   } 
   createWindow(); 
 } 
+
+ipcMain.on('window-control', (event, action) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win) return;
+    if (action === 'minimize') win.minimize();
+    if (action === 'maximize') win.isMaximized() ? win.unmaximize() : win.maximize();
+    if (action === 'close') win.close();
+});
 
 function createWindow(): void { 
   mainWindow = new BrowserWindow({ 

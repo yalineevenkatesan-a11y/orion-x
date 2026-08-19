@@ -81,23 +81,23 @@ export function WorkspaceLayout() {
             </div>
             
             {/* Frame Control Widgets */}
-            <div className="flex items-center gap-2 border-l border-white/10 pl-4">
+            <div className="flex items-center gap-2 border-l border-white/10 pl-4" style={{ WebkitAppRegion: 'no-drag' } as any}>
               <button 
-                onClick={() => (window as any).electronAPI?.windowControls?.minimize()}
+                onClick={() => (window as any).electronAPI?.ipcRenderer?.send('window-control', 'minimize')}
                 className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 text-gray-400 hover:text-white transition-colors"
                 title="Minimize"
               >
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 12H4" /></svg>
               </button>
               <button 
-                onClick={() => (window as any).electronAPI?.windowControls?.maximize()}
+                onClick={() => (window as any).electronAPI?.ipcRenderer?.send('window-control', 'maximize')}
                 className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 text-gray-400 hover:text-white transition-colors"
                 title="Maximize/Restore"
               >
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" ry="2" strokeWidth="2" /></svg>
               </button>
               <button 
-                onClick={() => (window as any).electronAPI?.windowControls?.close()}
+                onClick={() => (window as any).electronAPI?.ipcRenderer?.send('window-control', 'close')}
                 className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-red-500/20 border border-white/5 text-gray-400 hover:text-red-400 transition-colors"
                 title="Close"
               >
@@ -120,12 +120,12 @@ export function WorkspaceLayout() {
                 OPTIONS
               </button>
               {showOptions && (
-                <div className="absolute top-full left-0 mt-2 w-64 bg-[#0B0B10] border border-[#1E1E26] z-50 flex flex-col shadow-2xl">
-                  <div className="px-6 py-4 text-gray-300 hover:text-white font-mono text-xs uppercase tracking-widest border-b border-white/5 hover:bg-white/5 cursor-pointer transition-colors">Files View</div>
-                  <div className="px-6 py-4 text-gray-300 hover:text-white font-mono text-xs uppercase tracking-widest border-b border-white/5 hover:bg-white/5 cursor-pointer transition-colors">Global Search</div>
-                  <div className="px-6 py-4 text-gray-300 hover:text-white font-mono text-xs uppercase tracking-widest border-b border-white/5 hover:bg-white/5 cursor-pointer transition-colors">Memory Context Tracker</div>
-                  <div className="px-6 py-4 text-gray-300 hover:text-white font-mono text-xs uppercase tracking-widest border-b border-white/5 hover:bg-white/5 cursor-pointer transition-colors">Multi-Agent Chat Console</div>
-                  <div className="px-6 py-4 text-gray-300 hover:text-white font-mono text-xs uppercase tracking-widest hover:bg-white/5 cursor-pointer transition-colors">System Settings</div>
+                <div className="absolute top-full left-0 mt-2 w-56 bg-[#0B0B10] border border-[#1E1E26] rounded-lg shadow-2xl overflow-hidden flex flex-col z-50 py-1">
+                  <div className="px-4 py-2 text-sm text-[#A0AEC0] hover:text-[#E2E8F0] hover:bg-[#1E1E26] cursor-pointer transition-colors text-left font-medium">Files View</div>
+                  <div className="px-4 py-2 text-sm text-[#A0AEC0] hover:text-[#E2E8F0] hover:bg-[#1E1E26] cursor-pointer transition-colors text-left font-medium">Global Search</div>
+                  <div className="px-4 py-2 text-sm text-[#A0AEC0] hover:text-[#E2E8F0] hover:bg-[#1E1E26] cursor-pointer transition-colors text-left font-medium">Memory Context Tracker</div>
+                  <div className="px-4 py-2 text-sm text-[#A0AEC0] hover:text-[#E2E8F0] hover:bg-[#1E1E26] cursor-pointer transition-colors text-left font-medium">Multi-Agent Chat Console</div>
+                  <div className="px-4 py-2 text-sm text-[#A0AEC0] hover:text-[#E2E8F0] hover:bg-[#1E1E26] cursor-pointer transition-colors text-left font-medium">System Settings</div>
                 </div>
               )}
             </div>
