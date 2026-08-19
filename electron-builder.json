@@ -1,0 +1,23 @@
+{
+  "appId": "com.orionx.studio",
+  "productName": "OrionXStudio",
+  "directories": {
+    "output": "dist"
+  },
+  "files": [
+    "main/dist/**/*",
+    "renderer/out/**/*",
+    "package.json"
+  ],
+  "win": {
+    "target": [
+      "nsis"
+    ],
+    "requestedExecutionLevel": "asInvoker"
+  },
+  "nsis": {
+    "oneClick": true,
+    "perMachine": false,
+    "allowToChangeInstallationDirectory": false
+  }
+}

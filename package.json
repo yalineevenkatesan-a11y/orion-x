@@ -1,0 +1,30 @@
+{
+  "name": "orion-x-studio",
+  "version": "1.0.0",
+  "description": "ORION-X Studio - Premium AI Desktop Workspace",
+  "main": "main/dist/index.js",
+  "private": true,
+  "workspaces": [
+    "renderer"
+  ],
+  "scripts": {
+    "build:main": "tsc -p main/",
+    "dev:renderer": "npm run dev --prefix renderer",
+    "dev:electron": "wait-on http://localhost:3000 && npm run build:main && electron .",
+    "dev": "concurrently -n \"next,electron\" -c \"cyan,magenta\" \"npm run dev:renderer\" \"npm run dev:electron\"",
+    "build:renderer": "npm run build --prefix renderer",
+    "build": "npm run build:main && npm run build:renderer",
+    "package": "npm run build:renderer && npm run build:main && electron-builder"
+  },
+  "dependencies": {
+    "sqlite3": "link:."
+  },
+  "devDependencies": {
+    "@types/sqlite3": "^3.1.11",
+    "concurrently": "^8.2.2",
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3",
+    "typescript": "^5.5.3",
+    "wait-on": "^7.2.0"
+  }
+}

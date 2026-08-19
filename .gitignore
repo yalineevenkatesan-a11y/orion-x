@@ -1,0 +1,13 @@
+node_modules/
+.next/
+dist/
+out/
+build/
+*.exe
+*.pack
+.env
+.DS_Store
+*.log
+renderer/.next/
+renderer/out/
+main/dist/
