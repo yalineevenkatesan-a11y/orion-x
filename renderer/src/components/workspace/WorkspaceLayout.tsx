@@ -23,6 +23,7 @@ export function WorkspaceLayout() {
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [windowSize, setWindowSize] = useState({ width: 1920, height: 1080 });
   const [showOptions, setShowOptions] = useState(false);
+  const [activeView, setActiveView] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -121,7 +122,7 @@ export function WorkspaceLayout() {
               </button>
               {showOptions && (
                 <div className="absolute top-full left-0 mt-2 w-56 bg-[#0B0B10] border border-[#1E1E26] rounded-lg shadow-2xl overflow-hidden flex flex-col z-50 py-1">
-                  <div className="px-4 py-2 text-sm text-[#A0AEC0] hover:text-[#E2E8F0] hover:bg-[#1E1E26] cursor-pointer transition-colors text-left font-medium">Files View</div>
+                  <div onClick={() => { setActiveView('files'); setShowOptions(false); }} className="px-4 py-2 text-sm text-[#A0AEC0] hover:text-[#E2E8F0] hover:bg-[#1E1E26] cursor-pointer transition-colors text-left font-medium">Files View</div>
                   <div className="px-4 py-2 text-sm text-[#A0AEC0] hover:text-[#E2E8F0] hover:bg-[#1E1E26] cursor-pointer transition-colors text-left font-medium">Global Search</div>
                   <div className="px-4 py-2 text-sm text-[#A0AEC0] hover:text-[#E2E8F0] hover:bg-[#1E1E26] cursor-pointer transition-colors text-left font-medium">Memory Context Tracker</div>
                   <div className="px-4 py-2 text-sm text-[#A0AEC0] hover:text-[#E2E8F0] hover:bg-[#1E1E26] cursor-pointer transition-colors text-left font-medium">Multi-Agent Chat Console</div>
@@ -143,6 +144,24 @@ export function WorkspaceLayout() {
           </div>
         </div>
 
+        {activeView === 'files' && (
+            <div className="absolute top-24 left-6 w-[450px] bg-[#0B0B10] border border-[#1E1E26] z-40 p-4 font-mono text-xs text-[#E2E8F0]">
+                <div className="flex items-center justify-between border-b border-[#1E1E26] pb-2 mb-4">
+                    <span className="font-bold tracking-widest">[ FILE SYSTEM ]</span>
+                    <button onClick={() => setActiveView(null)} className="text-[#A0AEC0] hover:text-white">CLOSE</button>
+                </div>
+                <div className="flex flex-col gap-2">
+                    <div className="text-[#00D2FF]">[+] [DIR] .github</div>
+                    <div className="text-[#00D2FF]">[-] [DIR] scripts</div>
+                    <div className="pl-4 text-[#A0AEC0]">|-- check_readme.py</div>
+                    <div className="pl-4 text-[#A0AEC0]">|-- linkcheck-domains.txt</div>
+                    <div className="pl-4 text-[#A0AEC0]">|-- lint-allow-duplicates.txt</div>
+                    <div className="text-[#A0AEC0]">|-- CONTRIBUTING.md</div>
+                    <div className="text-[#A0AEC0]">|-- LICENSE.md</div>
+                    <div className="text-[#A0AEC0]">|-- README.md</div>
+                </div>
+            </div>
+        )}
         {/* Absolute 3D Canvas */}
         <div className="absolute inset-0 z-0 w-screen h-screen">
           <NeuralGraphDashboard />

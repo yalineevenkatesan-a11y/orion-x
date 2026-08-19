@@ -48,9 +48,10 @@ function createWindow(): void {
   mainWindow = new BrowserWindow({ 
     width: 1200, 
     height: 800, 
-    frame: true,       // CHANGED TO TRUE: Ensures the window outline shows up on your desktop
-    transparent: false, // CHANGED TO FALSE: Prevents the window from being invisible
-    show: true,         // CHANGED TO TRUE: Forces Electron to physically show it instantly
+    frame: false,
+    autoHideMenuBar: true,
+    transparent: false,
+    show: true,
     webPreferences: { 
       nodeIntegration: false, 
       contextIsolation: true, 
