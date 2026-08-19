@@ -15,6 +15,35 @@ import { useWorkspaceUi } from '../../context/WorkspaceUiContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import NeuralGraphDashboard from './NeuralGraphDashboard';
 
+const FileTreeNode = ({ node, depth = 0 }: { node: any; depth?: number }) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+    const indent = depth > 0 ? '1.5rem' : '0';
+
+    if (node.type === 'dir') {
+        return (
+            <div style={{ marginLeft: indent }}>
+                <div 
+                    className="text-white font-bold cursor-pointer hover:text-[#00D2FF] select-none py-1"
+                    onClick={() => setIsExpanded(!isExpanded)}
+                >
+                    [{isExpanded ? '-' : '+'}] [DIR] {node.name}
+                </div>
+                {isExpanded && (
+                    <div className="border-l border-[#2A2A35] ml-2 pl-2">
+                        {node.children?.map((child: any, i: number) => (
+                            <FileTreeNode key={`${child.name}-${i}`} node={child} depth={depth + 1} />
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
+    }
+    return (
+        <div className="text-[#A0AEC0] cursor-pointer hover:text-white py-1 select-none" style={{ marginLeft: indent }}>
+            <span className="text-[#00D2FF]">|--</span> {node.name}
+        </div>
+    );
+};
 export function WorkspaceLayout() {
   const [bootState, setBootState] = useState<'initializing' | 'active'>('initializing');
   const { activeWorkspace } = useWorkspaceUi();
@@ -178,7 +207,7 @@ export function WorkspaceLayout() {
         )}
 
         {activeView === 'files' && (
-            <div className="absolute top-32 left-80 right-8 bottom-24 bg-[#0B0B10] z-40 overflow-y-auto pl-4">
+            <div className="absolute top-24 left-80 right-8 bottom-8 bg-[#0B0B10] z-50 p-8 overflow-y-auto border border-[#1E1E26] shadow-2xl">
                 <div className="mb-6 mr-16">
                     <div className="flex items-center gap-4">
                         <h2 className="text-white font-bold tracking-widest text-lg">[ FILE SYSTEM ]</h2>
@@ -190,7 +219,7 @@ export function WorkspaceLayout() {
                 
                 {/* Live Data File Tree */}
                 <div className="font-mono text-sm leading-8">
-                    {fileTree ? renderTree(fileTree) : <div className="text-[#A0AEC0]">SCANNING NEURAL DIRECTORY...</div>}
+                    {fileTree ? <FileTreeNode node={fileTree} /> : <div className="text-[#A0AEC0]">SCANNING NEURAL DIRECTORY...</div>}
                 </div>
             </div>
         )}
