@@ -23,7 +23,7 @@ const FileTreeNode = ({ node, depth = 0, onFileSelect }: { node: any; depth?: nu
         return (
             <div style={{ marginLeft: indent }}>
                 <div 
-                    className="text-white font-bold cursor-pointer hover:text-[#00D2FF] select-none py-1"
+                    className="text-white font-bold cursor-pointer hover:text-[#00D2FF] select-none py-0.5 flex items-center"
                     onClick={() => setIsExpanded(!isExpanded)}
                 >
                     [{isExpanded ? '-' : '+'}] [DIR] {node.name}
@@ -39,8 +39,8 @@ const FileTreeNode = ({ node, depth = 0, onFileSelect }: { node: any; depth?: nu
         );
     }
     return (
-        <div onClick={() => onFileSelect(node)} className="text-[#A0AEC0] cursor-pointer hover:text-white py-1 select-none" style={{ marginLeft: indent }}>
-            <span className="text-[#00D2FF]">|--</span> {node.name}
+        <div onClick={() => onFileSelect(node)} className="text-[#A0AEC0] cursor-pointer hover:text-white py-0.5 select-none flex items-center" style={{ marginLeft: indent }}>
+            <span className="text-[#00D2FF] mr-2">|--</span> {node.name}
         </div>
     );
 };
@@ -81,28 +81,9 @@ export function WorkspaceLayout() {
 
   useEffect(() => {
     if (activeView === 'files') {
-      (window as any).electronAPI?.ipcRenderer?.invoke('fs:getTreeData').then((data: any) => setFileTree(data));
+      (window as any).electronAPI?.ipcRenderer?.invoke('fs:getTreeData', 'C:\\Users\\asus\\.gemini\\antigravity\\scratch').then((data: any) => setFileTree(data));
     }
   }, [activeView]);
-
-  const renderTree = (node: any, depth = 0): any => {
-    if (!node) return null;
-    if (node.type === 'dir') {
-      return (
-        <div key={node.name} style={{ marginLeft: depth > 0 ? '1.5rem' : '0' }} className={depth > 0 ? "border-l border-[#1E1E26] pl-4" : ""}>
-          <div className="text-white font-bold py-1 cursor-pointer hover:text-[#00D2FF] transition-colors">
-            [-] [DIR] {node.name}
-          </div>
-          <div>{node.children?.map((child: any) => renderTree(child, depth + 1))}</div>
-        </div>
-      );
-    }
-    return (
-      <div key={node.name} style={{ marginLeft: depth > 0 ? '1.5rem' : '0' }} className={`text-[#A0AEC0] py-1 cursor-pointer hover:text-white transition-colors ${depth > 0 ? 'border-l border-[#1E1E26] pl-4' : ''}`}>
-        |-- {node.name}
-      </div>
-    );
-  };
 
   const isActive = bootState === 'active';
 
@@ -214,7 +195,7 @@ export function WorkspaceLayout() {
         )}
 
         {activeView === 'files' && (
-            <div className="absolute top-24 left-80 right-8 bottom-8 bg-[#0B0B10] z-50 p-8 overflow-y-auto border border-[#1E1E26] shadow-2xl">
+            <div className="absolute top-24 left-[280px] right-0 bottom-0 bg-[#0B0B10] z-40 p-8 overflow-y-auto border-l border-t border-[#1E1E26]">
                 <div className="mb-6 mr-16">
                     <div className="flex items-center gap-4">
                         <h2 className="text-white font-bold tracking-widest text-lg">[ FILE SYSTEM ]</h2>
@@ -225,7 +206,7 @@ export function WorkspaceLayout() {
                 </div>
                 
                 {/* Live Data File Tree */}
-                <div className="font-mono text-sm leading-8">
+                <div className="font-mono text-sm">
                     {fileTree ? <FileTreeNode node={fileTree} onFileSelect={handleFileClick} /> : <div className="text-[#A0AEC0]">SCANNING NEURAL DIRECTORY...</div>}
                 </div>
             </div>
