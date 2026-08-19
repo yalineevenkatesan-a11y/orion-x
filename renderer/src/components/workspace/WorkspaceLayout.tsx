@@ -51,19 +51,18 @@ export function WorkspaceLayout() {
 
   const renderTree = (node: any, depth = 0): any => {
     if (!node) return null;
-    const padding = { paddingLeft: `${depth * 1.5}rem` };
     if (node.type === 'dir') {
       return (
-        <div key={node.name}>
-          <div style={padding} className="text-[#00D2FF] py-1 cursor-pointer hover:text-white transition-colors">
-            [+] [DIR] {node.name}
+        <div key={node.name} style={{ marginLeft: depth > 0 ? '1.5rem' : '0' }} className={depth > 0 ? "border-l border-[#1E1E26] pl-4" : ""}>
+          <div className="text-white font-bold py-1 cursor-pointer hover:text-[#00D2FF] transition-colors">
+            [-] [DIR] {node.name}
           </div>
           <div>{node.children?.map((child: any) => renderTree(child, depth + 1))}</div>
         </div>
       );
     }
     return (
-      <div key={node.name} style={padding} className="text-[#A0AEC0] py-1 cursor-pointer hover:text-white transition-colors">
+      <div key={node.name} style={{ marginLeft: depth > 0 ? '1.5rem' : '0' }} className={`text-[#A0AEC0] py-1 cursor-pointer hover:text-white transition-colors ${depth > 0 ? 'border-l border-[#1E1E26] pl-4' : ''}`}>
         |-- {node.name}
       </div>
     );
@@ -148,15 +147,6 @@ export function WorkspaceLayout() {
               >
                 OPTIONS
               </button>
-              {showOptions && (
-                <div className="absolute top-full left-0 mt-2 w-56 bg-[#0B0B10] border border-[#1E1E26] rounded-lg shadow-2xl overflow-hidden flex flex-col z-50 py-1">
-                  <div onClick={() => { setActiveView('files'); setShowOptions(false); }} className="px-4 py-2 text-sm text-[#A0AEC0] hover:text-[#E2E8F0] hover:bg-[#1E1E26] cursor-pointer transition-colors text-left font-medium">Files View</div>
-                  <div className="px-4 py-2 text-sm text-[#A0AEC0] hover:text-[#E2E8F0] hover:bg-[#1E1E26] cursor-pointer transition-colors text-left font-medium">Global Search</div>
-                  <div className="px-4 py-2 text-sm text-[#A0AEC0] hover:text-[#E2E8F0] hover:bg-[#1E1E26] cursor-pointer transition-colors text-left font-medium">Memory Context Tracker</div>
-                  <div className="px-4 py-2 text-sm text-[#A0AEC0] hover:text-[#E2E8F0] hover:bg-[#1E1E26] cursor-pointer transition-colors text-left font-medium">Multi-Agent Chat Console</div>
-                  <div className="px-4 py-2 text-sm text-[#A0AEC0] hover:text-[#E2E8F0] hover:bg-[#1E1E26] cursor-pointer transition-colors text-left font-medium">System Settings</div>
-                </div>
-              )}
             </div>
             <button className="px-4 py-2 bg-[#0B0B10] border border-[#1E1E26] outline-none focus:outline-none text-xs font-bold text-[#E2E8F0] uppercase tracking-widest hover:border-[#00D2FF]">SWITCH VAULT</button>
             <button onClick={() => window.dispatchEvent(new CustomEvent('orion:reset-zoom'))} className="px-4 py-2 bg-[#0B0B10] border border-[#1E1E26] outline-none focus:outline-none text-xs font-bold text-[#E2E8F0] uppercase tracking-widest hover:border-[#00D2FF]">&lt; BACK</button>
@@ -172,14 +162,34 @@ export function WorkspaceLayout() {
           </div>
         </div>
 
-        {activeView === 'files' && (
-            <div className="absolute top-24 left-6 w-[800px] h-[70vh] bg-[#0B0B10] border border-[#1E1E26] z-40 p-8 font-mono text-sm overflow-y-auto shadow-2xl">
-                <div className="flex flex-col border-b border-[#1E1E26] pb-4 mb-6 relative">
-                    <span className="font-bold tracking-widest text-lg text-white">[ FILE SYSTEM ]</span>
-                    <span className="text-xs text-[#A0AEC0] mt-1">Structural Workspace Context</span>
-                    <button onClick={() => setActiveView(null)} className="absolute top-0 right-0 text-[#A0AEC0] hover:text-white">CLOSE [x]</button>
+        {showOptions && (
+            <div className="absolute top-20 left-6 w-64 bg-[#15151C] border border-[#2A2A35] rounded-md z-50 overflow-hidden flex flex-col font-mono text-sm shadow-2xl">
+                <div 
+                    onClick={() => { setActiveView('files'); setShowOptions(false); }}
+                    className="px-4 py-3 bg-[#2A2A35] text-white cursor-pointer"
+                >
+                    [DIR] Files View
                 </div>
-                <div className="flex flex-col">
+                <div className="px-4 py-3 text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26] cursor-pointer">Global Search</div>
+                <div className="px-4 py-3 text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26] cursor-pointer">Memory Context Tracker</div>
+                <div className="px-4 py-3 text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26] cursor-pointer">Multi-Agent Chat Console</div>
+                <div className="px-4 py-3 text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26] cursor-pointer border-t border-[#2A2A35]">System Settings</div>
+            </div>
+        )}
+
+        {activeView === 'files' && (
+            <div className="absolute top-32 left-80 right-8 bottom-24 bg-[#0B0B10] z-40 overflow-y-auto pl-4">
+                <div className="mb-6 mr-16">
+                    <div className="flex items-center gap-4">
+                        <h2 className="text-white font-bold tracking-widest text-lg">[ FILE SYSTEM ]</h2>
+                        <button onClick={() => setActiveView(null)} className="text-[#A0AEC0] hover:text-white ml-auto">CLOSE [x]</button>
+                    </div>
+                    <p className="text-[#64748B] text-xs font-mono mt-2 mb-4">Structural Workspace Context</p>
+                    <hr className="border-[#1E1E26]" />
+                </div>
+                
+                {/* Live Data File Tree */}
+                <div className="font-mono text-sm leading-8">
                     {fileTree ? renderTree(fileTree) : <div className="text-[#A0AEC0]">SCANNING NEURAL DIRECTORY...</div>}
                 </div>
             </div>
