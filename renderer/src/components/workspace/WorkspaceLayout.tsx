@@ -195,22 +195,26 @@ export function WorkspaceLayout() {
         )}
 
         {activeView === 'files' && (
-            <div className="absolute top-24 left-[280px] right-0 bottom-0 bg-[#0B0B10] z-40 p-8 overflow-y-auto border-l border-t border-[#1E1E26]">
-                <div className="mb-6 mr-16">
-                    <div className="flex items-center gap-6 mb-2">
-                        <h2 className="text-white font-bold tracking-widest text-lg">[ FILE SYSTEM ]</h2>
-                        <div className="flex items-center border border-[#2A2A35] rounded-full px-4 py-1.5 text-xs text-[#A0AEC0] bg-[#0B0B10]">
-                            <span className="font-bold text-white mr-4 hover:text-[#00D2FF] cursor-pointer">[F] GRAPH FILTERS</span>
-                            <span className="font-bold text-white mr-4 border-l border-[#2A2A35] pl-4 hover:text-[#00D2FF] cursor-pointer">[O] OPTIONS</span>
-                            <span className="border-l border-[#2A2A35] pl-4 flex items-center">
-                                <span className="mr-2 text-white">[SEARCH]</span>
-                                <input type="text" placeholder="Search nodes, paths, risk:high..." className="bg-transparent outline-none w-64 text-[#A0AEC0] placeholder-[#64748B]" />
-                            </span>
+            <div className="fixed top-24 left-[280px] right-0 bottom-0 bg-[#0B0B10] z-50 p-8 overflow-y-auto border-l border-t border-[#1E1E26] shadow-2xl flex flex-col">
+                <div className="mb-6 w-full">
+                    <div className="flex flex-row items-center justify-between w-full mb-2">
+                        <div className="flex flex-row items-center gap-6">
+                            <h2 className="text-white font-bold tracking-widest text-lg whitespace-nowrap">[ FILE SYSTEM ]</h2>
+                            <div className="flex flex-row items-center border border-[#2A2A35] rounded-full px-4 py-1.5 text-xs text-[#A0AEC0] bg-[#0B0B10] whitespace-nowrap flex-shrink-0">
+                                <span className="font-bold text-white mr-4 hover:text-[#00D2FF] cursor-pointer whitespace-nowrap">[F] GRAPH FILTERS</span>
+                                <span className="font-bold text-white mr-4 border-l border-[#2A2A35] pl-4 hover:text-[#00D2FF] cursor-pointer whitespace-nowrap">[O] OPTIONS</span>
+                                <span className="border-l border-[#2A2A35] pl-4 flex flex-row items-center min-w-[200px]">
+                                    <span className="mr-2 text-white whitespace-nowrap">[SEARCH]</span>
+                                    <input type="text" placeholder="Search nodes..." className="bg-transparent outline-none w-full text-[#A0AEC0] placeholder-[#64748B]" />
+                                </span>
+                            </div>
                         </div>
-                        <button onClick={() => setActiveView(null)} className="text-[#A0AEC0] hover:text-white ml-auto">CLOSE [x]</button>
+                        <button onClick={() => setActiveView(null)} className="text-[#A0AEC0] hover:text-white whitespace-nowrap uppercase tracking-widest text-xs px-4">
+                            CLOSE [x]
+                        </button>
                     </div>
-                    <p className="text-[#64748B] text-xs font-mono mt-1 mb-4">Structural Workspace Context</p>
-                    <hr className="border-[#1E1E26]" />
+                    <p className="text-[#64748B] text-xs font-mono mb-4">Structural Workspace Context</p>
+                    <hr className="border-[#1E1E26] w-full" />
                 </div>
                 
                 {/* Live Data File Tree */}
