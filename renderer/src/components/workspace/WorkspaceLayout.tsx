@@ -225,19 +225,7 @@ export function WorkspaceLayout() {
             </aside>
 
             {/* INTERACTIVE CORE WORKSPACE (MUST FILL REMAINING SCREEN) */}
-            <main className="flex-1 flex flex-col p-8 bg-[#050508] relative overflow-hidden">
-                {/* GLOBAL TOOLBAR (Always Visible) */}
-                <div className="w-full flex justify-center mb-4 z-40 relative">
-                    <div className="flex flex-row items-center border border-[#2A2A35] rounded-full px-4 py-1.5 text-xs text-[#A0AEC0] bg-[#0B0B10]">
-                        <span className="font-bold text-white mr-4 hover:text-[#00D2FF] cursor-pointer">[F] GRAPH FILTERS</span>
-                        <span className="font-bold text-white mr-4 border-l border-[#2A2A35] pl-4 hover:text-[#00D2FF] cursor-pointer">[O] OPTIONS</span>
-                        <span className="border-l border-[#2A2A35] pl-4 flex items-center min-w-[300px]">
-                            <span className="mr-3 text-[#A0AEC0]">[SEARCH]</span>
-                            <input type="text" placeholder="Search nodes..." className="bg-transparent outline-none w-full text-[#A0AEC0]" />
-                        </span>
-                    </div>
-                </div>
-
+            <main className="flex-1 flex flex-col bg-[#050508] relative overflow-hidden">
                 {/* 3D GRAPH AREA (Underneath) */}
                 <div className="absolute inset-0 z-0">
                     {/* The 3D nodes render here */}
