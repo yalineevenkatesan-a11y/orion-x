@@ -187,15 +187,25 @@ export function WorkspaceLayout() {
             <div className="absolute top-20 left-6 w-64 bg-[#15151C] border border-[#2A2A35] rounded-md z-50 overflow-hidden flex flex-col font-mono text-sm shadow-2xl">
                 <div 
                     onClick={() => { setActiveView('files'); setShowOptions(false); }}
-                    className="px-4 py-3 bg-[#2A2A35] text-white cursor-pointer"
+                    className={`px-4 py-3 cursor-pointer ${activeView === 'files' ? 'bg-[#2A2A35] text-white' : 'text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26]'}`}
                 >
                     [DIR] Files View
                 </div>
-                <div className="px-4 py-3 text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26] cursor-pointer">Global Search</div>
-                <div className="px-4 py-3 text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26] cursor-pointer">Memory Context Tracker</div>
                 <div 
-                    onClick={() => { setActiveView('chat'); setShowOptions(false); console.log("VIEW CHANGED: chat"); }}
-                    className={`px-4 py-3 hover:text-white hover:bg-[#1E1E26] cursor-pointer ${activeView === 'chat' ? 'bg-[#2A2A35] text-white' : 'text-[#A0AEC0]'}`}
+                    onClick={() => { setActiveView('search'); setShowOptions(false); }}
+                    className={`px-4 py-3 cursor-pointer ${activeView === 'search' ? 'bg-[#2A2A35] text-white' : 'text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26]'}`}
+                >
+                    Global Search
+                </div>
+                <div 
+                    onClick={() => { setActiveView('memory'); setShowOptions(false); }}
+                    className={`px-4 py-3 cursor-pointer ${activeView === 'memory' ? 'bg-[#2A2A35] text-white' : 'text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26]'}`}
+                >
+                    Memory Context Tracker
+                </div>
+                <div 
+                    onClick={() => { setActiveView('chat'); setShowOptions(false); }}
+                    className={`px-4 py-3 cursor-pointer ${activeView === 'chat' ? 'bg-[#2A2A35] text-white' : 'text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26]'}`}
                 >
                     Multi-Agent Chat Console
                 </div>
@@ -203,12 +213,10 @@ export function WorkspaceLayout() {
             </div>
         )}
 
-        {/* MIDDLE SECTION: SIDEBAR + WORKSPACE */}
-        <div className="flex flex-row flex-1 overflow-hidden w-full absolute top-16 bottom-0 z-10 bg-[#0B0B10]">
-            
+        <div className="flex flex-row flex-1 overflow-hidden w-full relative">
             {/* LEFT SIDEBAR (MUST BE FIXED WIDTH & VISIBLE) */}
-            <aside className="w-[280px] border-r border-[#1E1E26] flex flex-col justify-between bg-[#15151C] shrink-0 p-4 h-full z-20">
-                <div className="flex flex-col gap-1 border border-[#2A2A35] rounded-md bg-[#0B0B10] overflow-hidden text-sm font-mono">
+            <aside className="w-[280px] border-r border-[#1E1E26] flex flex-col justify-between bg-[#15151C] shrink-0 p-4 h-full z-10">
+                <div className="flex flex-col gap-1 border border-[#2A2A35] rounded-md bg-[#0B0B10] overflow-hidden">
                     <div onClick={() => setActiveView('files')} className={`px-4 py-3 font-bold cursor-pointer ${activeView === 'files' ? 'bg-[#2A2A35] text-white' : 'text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26]'}`}>[DIR] Files View</div>
                     <div onClick={() => setActiveView('search')} className={`px-4 py-3 font-bold cursor-pointer ${activeView === 'search' ? 'bg-[#2A2A35] text-white' : 'text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26]'}`}>Global Search</div>
                     <div onClick={() => setActiveView('memory')} className={`px-4 py-3 font-bold cursor-pointer ${activeView === 'memory' ? 'bg-[#2A2A35] text-white' : 'text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26]'}`}>Memory Context Tracker</div>
@@ -217,9 +225,9 @@ export function WorkspaceLayout() {
             </aside>
 
             {/* INTERACTIVE CORE WORKSPACE (MUST FILL REMAINING SCREEN) */}
-            <main className="flex-1 flex flex-col p-8 bg-[#050508] relative overflow-hidden h-full">
+            <main className="flex-1 flex flex-col p-8 bg-[#050508] relative overflow-hidden">
                 {/* GLOBAL TOOLBAR (Always Visible) */}
-                <div className="w-full flex justify-center mb-4 z-40 relative pointer-events-auto">
+                <div className="w-full flex justify-center mb-4 z-40 relative">
                     <div className="flex flex-row items-center border border-[#2A2A35] rounded-full px-4 py-1.5 text-xs text-[#A0AEC0] bg-[#0B0B10]">
                         <span className="font-bold text-white mr-4 hover:text-[#00D2FF] cursor-pointer">[F] GRAPH FILTERS</span>
                         <span className="font-bold text-white mr-4 border-l border-[#2A2A35] pl-4 hover:text-[#00D2FF] cursor-pointer">[O] OPTIONS</span>
@@ -232,31 +240,32 @@ export function WorkspaceLayout() {
 
                 {/* 3D GRAPH AREA (Underneath) */}
                 <div className="absolute inset-0 z-0">
+                    {/* The 3D nodes render here */}
                     <NeuralGraphDashboard />
                 </div>
 
                 {/* FILE SYSTEM OVERLAY */}
                 {activeView === 'files' && (
-                    <div className="absolute top-20 left-8 right-8 bottom-8 bg-[#0B0B10] z-50 p-8 border border-[#1E1E26] overflow-y-auto shadow-2xl rounded-xl">
+                    <div className="absolute top-24 left-8 right-8 bottom-8 bg-[#0B0B10] z-50 p-8 border border-[#1E1E26] overflow-y-auto shadow-2xl">
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-white font-bold tracking-widest text-lg">[ FILE SYSTEM ]</h2>
                             <button onClick={() => setActiveView(null)} className="text-[#A0AEC0] hover:text-white font-bold text-xs tracking-widest uppercase">CLOSE [x]</button>
                         </div>
-                        <div className="font-mono text-sm leading-tight">
-                            {fileTree ? <FileTreeNode node={fileTree} onFileSelect={handleFileClick}/> : <div className="text-[#A0AEC0]">SCANNING...</div>}
-                        </div>
+                        {fileTree ? <FileTreeNode node={fileTree} onFileSelect={handleFileClick}/> : <div>SCANNING...</div>}
                     </div>
                 )}
 
-                {/* MULTI-AGENT CHAT CONSOLE OVERLAY */}
+                {/* CHAT CONSOLE OVERLAY */}
                 {activeView === 'chat' && (
-                    <div className="absolute top-20 left-8 right-8 bottom-8 bg-[#0B0B10] z-50 p-8 border border-[#1E1E26] overflow-y-auto shadow-2xl rounded-xl flex flex-col gap-6">
+                    <div className="absolute top-24 left-8 right-8 bottom-8 bg-[#0B0B10] z-50 p-8 border border-[#1E1E26] overflow-y-auto shadow-2xl flex flex-col gap-6">
                         <div className="flex justify-between items-center mb-2">
-                            <h2 className="text-white font-bold tracking-widest text-lg">[ CHAT CONSOLE ]</h2>
+                            <div>
+                                <h2 className="text-white font-bold tracking-widest text-lg">[ CHAT CONSOLE ]</h2>
+                                <p className="text-[#64748B] text-xs font-mono mt-1">Diagnostic Multi-Persona Simulation</p>
+                            </div>
                             <button onClick={() => setActiveView(null)} className="text-[#A0AEC0] hover:text-white font-bold text-xs tracking-widest uppercase">CLOSE [x]</button>
                         </div>
-                        <p className="text-[#64748B] text-xs font-mono mb-2">Diagnostic Multi-Persona Simulation</p>
-                        <hr className="border-[#1E1E26] w-full mb-4" />
+                        <hr className="border-[#1E1E26] w-full" />
 
                         {/* Persona Diagnostic Cards */}
                         <div className="flex flex-row gap-4 shrink-0">
@@ -292,8 +301,123 @@ export function WorkspaceLayout() {
                         </div>
                     </div>
                 )}
+
+                {/* GLOBAL SEARCH OVERLAY */}
+                {activeView === 'search' && (
+                    <div className="absolute top-24 left-8 right-8 bottom-8 bg-[#0B0B10] z-50 p-8 border border-[#1E1E26] overflow-y-auto shadow-2xl flex flex-col">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-white font-bold tracking-widest text-lg">[ GLOBAL SEARCH ]</h2>
+                            <button onClick={() => setActiveView(null)} className="text-[#A0AEC0] hover:text-white font-bold text-xs tracking-widest uppercase">CLOSE [x]</button>
+                        </div>
+                        <div className="text-[#A0AEC0] font-mono text-sm">Search query index and knowledge nodes across workspace.</div>
+                    </div>
+                )}
+
+                {/* MEMORY CONTEXT OVERLAY */}
+                {activeView === 'memory' && (
+                    <div className="absolute top-24 left-8 right-8 bottom-8 bg-[#0B0B10] z-50 p-8 border border-[#1E1E26] overflow-y-auto shadow-2xl flex flex-col">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-white font-bold tracking-widest text-lg">[ MEMORY CONTEXT TRACKER ]</h2>
+                            <button onClick={() => setActiveView(null)} className="text-[#A0AEC0] hover:text-white font-bold text-xs tracking-widest uppercase">CLOSE [x]</button>
+                        </div>
+                        <div className="text-[#A0AEC0] font-mono text-sm">Tracking active neural memory buffer and cognitive vector states.</div>
+                    </div>
+                )}
             </main>
         </div>
+
+        {activeView === 'file-viewer' && activeFile && (
+            <div className="fixed inset-0 z-50 flex bg-[#0B0B10]">
+                {/* Left Panel (File Info) */}
+                <div className="w-[350px] border-r border-[#1E1E26] flex flex-col h-full font-mono text-xs">
+                    <div className="p-4 border-b border-[#1E1E26] font-bold text-white">[ FILE INFORMATION PANEL ]</div>
+                    <div className="p-4 flex-1 overflow-y-auto flex flex-col gap-4">
+                        
+                        {/* BASIC INFO */}
+                        <div>
+                            <div className="text-white font-bold cursor-pointer hover:text-[#00D2FF] select-none" onClick={() => setBasicInfoOpen(!basicInfoOpen)}>
+                                [{basicInfoOpen ? '-' : '+'}] BASIC INFORMATION
+                            </div>
+                            {basicInfoOpen && (
+                                <div className="mt-2 pl-4 flex flex-col gap-2 text-[#A0AEC0]">
+                                    <div><span className="text-[#00D2FF]">Name:</span> {activeFile.name}</div>
+                                    <div className="break-all"><span className="text-[#00D2FF]">Path:</span> {activeFile.path}</div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* CODE INFO */}
+                        <div>
+                            <div className="text-white font-bold cursor-pointer hover:text-[#00D2FF] select-none" onClick={() => setCodeInfoOpen(!codeInfoOpen)}>
+                                [{codeInfoOpen ? '-' : '+'}] CODE INFORMATION
+                            </div>
+                            {codeInfoOpen && <div className="mt-2 pl-4 text-[#A0AEC0]">No code analysis available.</div>}
+                        </div>
+
+                        {/* DEPENDENCIES */}
+                        <div>
+                            <div className="text-white font-bold cursor-pointer hover:text-[#00D2FF] select-none" onClick={() => setDepsOpen(!depsOpen)}>
+                                [{depsOpen ? '-' : '+'}] DEPENDENCIES
+                            </div>
+                            {depsOpen && <div className="mt-2 pl-4 text-[#A0AEC0]">No dependencies found.</div>}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Center Panel (Code View) */}
+                <div className="flex-1 flex flex-col bg-[#0B0B10] min-w-0">
+                    <div className="h-14 border-b border-[#1E1E26] flex items-center px-4 gap-6 text-xs font-bold text-[#E2E8F0] justify-between">
+                        <div className="cursor-pointer hover:text-[#00D2FF] whitespace-nowrap">[G] GRAPH VIEW</div>
+                        <div className="cursor-pointer hover:text-[#00D2FF] whitespace-nowrap">[F] GRAPH FILTERS</div>
+                        <div className="cursor-pointer hover:text-[#00D2FF] whitespace-nowrap">[O] OPTIONS</div>
+                        <div className="w-64 border border-[#1E1E26] rounded px-3 py-1 bg-[#15151C] text-[#A0AEC0] whitespace-nowrap hidden lg:block">
+                            [SEARCH] Search nodes, paths, risk:high...
+                        </div>
+                        <div className="flex flex-row items-center gap-4 ml-auto pr-8">
+                            <button 
+                                onClick={() => setActiveView('files')} 
+                                className="text-[#A0AEC0] hover:text-[#00D2FF] font-bold text-xs whitespace-nowrap border border-[#2A2A35] bg-[#0B0B10] px-4 py-1.5 rounded-full"
+                            >
+                                [ &lt; BACK TO TREE ]
+                            </button>
+                            <button 
+                                onClick={() => { setActiveView(null); setActiveFile(null); }} 
+                                className="text-[#A0AEC0] hover:text-white font-bold text-sm px-4 whitespace-nowrap"
+                            >
+                                CLOSE [x]
+                            </button>
+                        </div>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-4 relative">
+                        {activeFile.content.startsWith('data:image/') ? (
+                            <div className="flex items-center justify-center h-full w-full">
+                                <img src={activeFile.content} alt={activeFile.name} className="max-w-full max-h-full object-contain drop-shadow-2xl rounded-md" />
+                            </div>
+                        ) : (
+                            <pre className="font-mono text-sm text-[#A0AEC0] overflow-hidden break-all whitespace-pre-wrap">
+                                {activeFile.content}
+                            </pre>
+                        )}
+                    </div>
+                </div>
+
+                {/* Right Panel (AI Stream) */}
+                <div className="w-[300px] border-l border-[#1E1E26] flex flex-col bg-[#0B0B10]">
+                    <div className="h-14 border-b border-[#1E1E26] flex items-center justify-end px-4">
+                        <button 
+                            onClick={() => setActiveView('files')}
+                            className="text-xs font-bold text-[#E2E8F0] border border-[#1E1E26] px-3 py-1 hover:border-[#00D2FF]"
+                        >
+                            [ &lt; BACK TO TREE ]
+                        </button>
+                    </div>
+                    <div className="flex-1 flex flex-col items-center justify-center text-[#A0AEC0] text-xs font-mono gap-4">
+                        <div className="w-8 h-8 border-t-2 border-[#00D2FF] border-solid rounded-full animate-spin"></div>
+                        <div>LOADING FILE STREAM...</div>
+                    </div>
+                </div>
+            </div>
+        )}
       </div>
 
           <style jsx global>{`
