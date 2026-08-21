@@ -213,21 +213,11 @@ export function WorkspaceLayout() {
             </div>
         )}
 
-        <div className="flex flex-row flex-1 overflow-hidden w-full relative">
-            {/* LEFT SIDEBAR (MUST BE FIXED WIDTH & VISIBLE) */}
-            <aside className="w-[280px] border-r border-[#1E1E26] flex flex-col justify-between bg-[#15151C] shrink-0 p-4 h-full z-10">
-                <div className="flex flex-col gap-1 border border-[#2A2A35] rounded-md bg-[#0B0B10] overflow-hidden">
-                    <div onClick={() => setActiveView('files')} className={`px-4 py-3 font-bold cursor-pointer ${activeView === 'files' ? 'bg-[#2A2A35] text-white' : 'text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26]'}`}>[DIR] Files View</div>
-                    <div onClick={() => setActiveView('search')} className={`px-4 py-3 font-bold cursor-pointer ${activeView === 'search' ? 'bg-[#2A2A35] text-white' : 'text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26]'}`}>Global Search</div>
-                    <div onClick={() => setActiveView('memory')} className={`px-4 py-3 font-bold cursor-pointer ${activeView === 'memory' ? 'bg-[#2A2A35] text-white' : 'text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26]'}`}>Memory Context Tracker</div>
-                    <div onClick={() => setActiveView('chat')} className={`px-4 py-3 font-bold cursor-pointer ${activeView === 'chat' ? 'bg-[#2A2A35] text-white' : 'text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26]'}`}>Multi-Agent Chat Console</div>
-                </div>
-            </aside>
-
-            {/* INTERACTIVE CORE WORKSPACE (MUST FILL REMAINING SCREEN) */}
-            <main className="flex-1 flex flex-col bg-[#050508] relative overflow-hidden">
+        <div className="flex flex-row flex-1 overflow-hidden w-full h-full relative">
+            {/* INTERACTIVE CORE WORKSPACE (FULL SCREEN) */}
+            <main className="w-full h-full flex-1 flex flex-col bg-[#050508] relative overflow-hidden">
                 {/* 3D GRAPH AREA (Underneath) */}
-                <div className="absolute inset-0 z-0">
+                <div className="absolute inset-0 z-0 w-full h-full">
                     {/* The 3D nodes render here */}
                     <NeuralGraphDashboard />
                 </div>
