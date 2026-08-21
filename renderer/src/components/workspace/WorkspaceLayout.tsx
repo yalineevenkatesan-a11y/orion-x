@@ -23,7 +23,7 @@ const FileTreeNode = ({ node, depth = 0, onFileSelect }: { node: any; depth?: nu
         return (
             <div style={{ marginLeft: indent }}>
                 <div 
-                    className="text-white font-bold cursor-pointer hover:text-[#00D2FF] select-none py-0.5 flex items-center"
+                    className="text-white font-mono text-xs font-bold cursor-pointer hover:text-[#00D2FF] select-none py-1 flex items-center"
                     onClick={() => setIsExpanded(!isExpanded)}
                 >
                     [{isExpanded ? '-' : '+'}] [DIR] {node.name}
@@ -39,7 +39,7 @@ const FileTreeNode = ({ node, depth = 0, onFileSelect }: { node: any; depth?: nu
         );
     }
     return (
-        <div onClick={() => onFileSelect(node)} className="text-[#A0AEC0] cursor-pointer hover:text-white py-0.5 select-none flex items-center" style={{ marginLeft: indent }}>
+        <div onClick={() => onFileSelect(node)} className="text-[#A0AEC0] font-mono text-xs cursor-pointer hover:text-white py-1 select-none flex items-center" style={{ marginLeft: indent }}>
             <span className="text-[#00D2FF] mr-2">|--</span> {node.name}
         </div>
     );
@@ -224,26 +224,30 @@ export function WorkspaceLayout() {
 
                 {/* FILE SYSTEM OVERLAY */}
                 {activeView === 'files' && (
-                    <div className="absolute top-24 left-8 right-8 bottom-8 bg-[#0B0B10] z-50 p-8 border border-[#1E1E26] overflow-y-auto shadow-2xl">
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-white font-bold tracking-widest text-lg">[ FILE SYSTEM ]</h2>
-                            <button onClick={() => setActiveView(null)} className="text-[#A0AEC0] hover:text-white font-bold text-xs tracking-widest uppercase">CLOSE [x]</button>
+                    <div className="absolute inset-0 z-50 bg-[#0B0B10] p-8 overflow-y-auto flex flex-col font-mono text-xs text-[#A0AEC0]">
+                        <div className="flex justify-between items-center mb-6 pb-4 border-b border-[#1E1E26]">
+                            <div>
+                                <h2 className="text-white font-bold tracking-widest text-sm font-mono">[ FILE SYSTEM ]</h2>
+                                <p className="text-[#64748B] text-xs font-mono mt-1">Structural Workspace Context & Vault Explorer</p>
+                            </div>
+                            <button onClick={() => setActiveView(null)} className="text-xs font-bold text-[#A0AEC0] hover:text-white font-mono tracking-widest uppercase">CLOSE [x]</button>
                         </div>
-                        {fileTree ? <FileTreeNode node={fileTree} onFileSelect={handleFileClick}/> : <div>SCANNING...</div>}
+                        <div className="flex-1 overflow-y-auto font-mono text-xs">
+                            {fileTree ? <FileTreeNode node={fileTree} onFileSelect={handleFileClick}/> : <div className="text-[#A0AEC0]">SCANNING NEURAL DIRECTORY...</div>}
+                        </div>
                     </div>
                 )}
 
                 {/* CHAT CONSOLE OVERLAY */}
                 {activeView === 'chat' && (
-                    <div className="absolute top-24 left-8 right-8 bottom-8 bg-[#0B0B10] z-50 p-8 border border-[#1E1E26] overflow-y-auto shadow-2xl flex flex-col gap-6">
-                        <div className="flex justify-between items-center mb-2">
+                    <div className="absolute inset-0 z-50 bg-[#0B0B10] p-8 overflow-y-auto flex flex-col gap-6 font-mono text-xs">
+                        <div className="flex justify-between items-center mb-2 pb-4 border-b border-[#1E1E26]">
                             <div>
-                                <h2 className="text-white font-bold tracking-widest text-lg">[ CHAT CONSOLE ]</h2>
+                                <h2 className="text-white font-bold tracking-widest text-sm font-mono">[ CHAT CONSOLE ]</h2>
                                 <p className="text-[#64748B] text-xs font-mono mt-1">Diagnostic Multi-Persona Simulation</p>
                             </div>
-                            <button onClick={() => setActiveView(null)} className="text-[#A0AEC0] hover:text-white font-bold text-xs tracking-widest uppercase">CLOSE [x]</button>
+                            <button onClick={() => setActiveView(null)} className="text-xs font-bold text-[#A0AEC0] hover:text-white font-mono tracking-widest uppercase">CLOSE [x]</button>
                         </div>
-                        <hr className="border-[#1E1E26] w-full" />
 
                         {/* Persona Diagnostic Cards */}
                         <div className="flex flex-row gap-4 shrink-0">
@@ -272,7 +276,7 @@ export function WorkspaceLayout() {
 
                         {/* Main Chat Interface */}
                         <div className="flex-1 flex flex-col border border-[#1E1E26] bg-[#050508] p-4 rounded-xl relative overflow-hidden min-h-[300px]">
-                            <div className="flex-1 overflow-y-auto font-mono text-sm leading-tight text-[#A0AEC0] p-2 space-y-4 pb-16">
+                            <div className="flex-1 overflow-y-auto font-mono text-xs leading-relaxed text-[#A0AEC0] p-2 space-y-4 pb-16">
                                 {/* Simulated messages go here */}
                             </div>
                             <input type="text" placeholder="Send a message to all agents..." className="absolute bottom-4 left-4 right-4 bg-[#0B0B10] border border-[#2A2A35] rounded-full px-6 py-2 text-[#A0AEC0] placeholder-[#64748B] outline-none font-mono text-xs" />
@@ -282,23 +286,29 @@ export function WorkspaceLayout() {
 
                 {/* GLOBAL SEARCH OVERLAY */}
                 {activeView === 'search' && (
-                    <div className="absolute top-24 left-8 right-8 bottom-8 bg-[#0B0B10] z-50 p-8 border border-[#1E1E26] overflow-y-auto shadow-2xl flex flex-col">
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-white font-bold tracking-widest text-lg">[ GLOBAL SEARCH ]</h2>
-                            <button onClick={() => setActiveView(null)} className="text-[#A0AEC0] hover:text-white font-bold text-xs tracking-widest uppercase">CLOSE [x]</button>
+                    <div className="absolute inset-0 z-50 bg-[#0B0B10] p-8 overflow-y-auto flex flex-col font-mono text-xs text-[#A0AEC0]">
+                        <div className="flex justify-between items-center mb-6 pb-4 border-b border-[#1E1E26]">
+                            <div>
+                                <h2 className="text-white font-bold tracking-widest text-sm font-mono">[ GLOBAL SEARCH ]</h2>
+                                <p className="text-[#64748B] text-xs font-mono mt-1">Cross-Vault Knowledge & Node Index</p>
+                            </div>
+                            <button onClick={() => setActiveView(null)} className="text-xs font-bold text-[#A0AEC0] hover:text-white font-mono tracking-widest uppercase">CLOSE [x]</button>
                         </div>
-                        <div className="text-[#A0AEC0] font-mono text-sm">Search query index and knowledge nodes across workspace.</div>
+                        <div className="text-[#A0AEC0] font-mono text-xs">Search query index and knowledge nodes across workspace.</div>
                     </div>
                 )}
 
                 {/* MEMORY CONTEXT OVERLAY */}
                 {activeView === 'memory' && (
-                    <div className="absolute top-24 left-8 right-8 bottom-8 bg-[#0B0B10] z-50 p-8 border border-[#1E1E26] overflow-y-auto shadow-2xl flex flex-col">
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-white font-bold tracking-widest text-lg">[ MEMORY CONTEXT TRACKER ]</h2>
-                            <button onClick={() => setActiveView(null)} className="text-[#A0AEC0] hover:text-white font-bold text-xs tracking-widest uppercase">CLOSE [x]</button>
+                    <div className="absolute inset-0 z-50 bg-[#0B0B10] p-8 overflow-y-auto flex flex-col font-mono text-xs text-[#A0AEC0]">
+                        <div className="flex justify-between items-center mb-6 pb-4 border-b border-[#1E1E26]">
+                            <div>
+                                <h2 className="text-white font-bold tracking-widest text-sm font-mono">[ MEMORY CONTEXT TRACKER ]</h2>
+                                <p className="text-[#64748B] text-xs font-mono mt-1">Active Neural Memory Buffer & Cognitive Vector States</p>
+                            </div>
+                            <button onClick={() => setActiveView(null)} className="text-xs font-bold text-[#A0AEC0] hover:text-white font-mono tracking-widest uppercase">CLOSE [x]</button>
                         </div>
-                        <div className="text-[#A0AEC0] font-mono text-sm">Tracking active neural memory buffer and cognitive vector states.</div>
+                        <div className="text-[#A0AEC0] font-mono text-xs">Tracking active neural memory buffer and cognitive vector states.</div>
                     </div>
                 )}
             </main>
