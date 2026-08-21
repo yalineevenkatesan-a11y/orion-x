@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { NeuralNodes } from './NeuralNodes';
 import dynamic from 'next/dynamic';
 
@@ -15,23 +15,87 @@ import { useWorkspaceUi } from '../../context/WorkspaceUiContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import NeuralGraphDashboard from './NeuralGraphDashboard';
 
-const FileTreeNode = ({ node, depth = 0, onFileSelect }: { node: any; depth?: number, onFileSelect: (n: any) => void }) => {
-    const [isExpanded, setIsExpanded] = useState(false);
-    const indent = depth > 0 ? '1.5rem' : '0';
+const matchesCategory = (fileName: string, category: 'ALL' | 'CODE' | 'MEDIA' | 'DOCS') => {
+  if (category === 'ALL') return true;
+  const lastDotIndex = fileName.lastIndexOf('.');
+  if (lastDotIndex === -1) return false;
+  const ext = fileName.slice(lastDotIndex).toLowerCase();
+  if (category === 'CODE') {
+    return ['.ts', '.tsx', '.js', '.jsx', '.json', '.py', '.rs', '.go', '.cpp', '.c', '.h', '.hpp', '.css', '.scss', '.html', '.sh', '.bat', '.ps1', '.yaml', '.yml', '.toml', '.sql', '.java', '.env', '.prisma', '.graphql', '.vue', '.svelte'].includes(ext);
+  }
+  if (category === 'MEDIA') {
+    return ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.mp4', '.mp3', '.wav', '.ico', '.bmp', '.mov', '.webm', '.ogg', '.m4a', '.flac', '.avi', '.mkv'].includes(ext);
+  }
+  if (category === 'DOCS') {
+    return ['.md', '.txt', '.pdf', '.doc', '.docx', '.rtf', '.csv', '.log', '.xml', '.epub', '.xlsx', '.xls', '.pptx', '.ppt'].includes(ext);
+  }
+  return true;
+};
+
+const filterFileTree = (node: any, query: string, category: 'ALL' | 'CODE' | 'MEDIA' | 'DOCS'): any => {
+  if (!node) return null;
+  const cleanQuery = query.trim().toLowerCase();
+
+  if (node.type === 'dir') {
+    const filteredChildren = (node.children || [])
+      .map((child: any) => filterFileTree(child, query, category))
+      .filter(Boolean);
+
+    if (filteredChildren.length > 0) {
+      return {
+        ...node,
+        children: filteredChildren
+      };
+    }
+    return null;
+  }
+
+  const matchesSearch = cleanQuery ? node.name.toLowerCase().includes(cleanQuery) : true;
+  const matchesCat = matchesCategory(node.name, category);
+
+  if (matchesSearch && matchesCat) {
+    return node;
+  }
+  return null;
+};
+
+const FileTreeNode = ({ 
+  node, 
+  depth = 0, 
+  onFileSelect,
+  autoExpand = false 
+}: { 
+  node: any; 
+  depth?: number; 
+  onFileSelect: (n: any) => void;
+  autoExpand?: boolean;
+}) => {
+    const [isExpanded, setIsExpanded] = useState(autoExpand || depth === 0);
+
+    useEffect(() => {
+        if (autoExpand) {
+            setIsExpanded(true);
+        }
+    }, [autoExpand]);
 
     if (node.type === 'dir') {
         return (
-            <div style={{ marginLeft: indent }}>
+            <div style={{ marginLeft: depth > 0 ? '1.5rem' : '0' }}>
                 <div 
-                    className="text-white font-mono text-xs font-bold cursor-pointer hover:text-[#00D2FF] select-none py-1 flex items-center"
+                    className="text-white font-mono text-xs font-bold cursor-pointer hover:text-[#00D2FF] select-none py-1 flex items-center gap-1.5 transition-colors"
                     onClick={() => setIsExpanded(!isExpanded)}
                 >
-                    [{isExpanded ? '-' : '+'}] [DIR] {node.name}
+                    <span className="text-[#00D2FF]">[{isExpanded ? '-' : '+'}]</span>
+                    <span className="text-[#A0AEC0]">[DIR]</span>
+                    <span>{node.name}</span>
+                    {node.children && (
+                        <span className="text-[10px] text-[#64748B] font-normal">({node.children.length})</span>
+                    )}
                 </div>
                 {isExpanded && (
-                    <div className="border-l border-dashed border-[#2A2A35] ml-2 pl-4 mt-1 flex flex-col gap-1">
+                    <div className="border-l border-dashed border-[#2A2A35] ml-2 pl-3 mt-0.5 flex flex-col gap-0.5">
                         {node.children?.map((child: any, i: number) => (
-                            <FileTreeNode key={`${child.name}-${i}`} node={child} depth={depth + 1} onFileSelect={onFileSelect} />
+                            <FileTreeNode key={`${child.name}-${child.path || i}`} node={child} depth={depth + 1} onFileSelect={onFileSelect} autoExpand={autoExpand} />
                         ))}
                     </div>
                 )}
@@ -39,8 +103,12 @@ const FileTreeNode = ({ node, depth = 0, onFileSelect }: { node: any; depth?: nu
         );
     }
     return (
-        <div onClick={() => onFileSelect(node)} className="text-[#A0AEC0] font-mono text-xs cursor-pointer hover:text-white py-1 select-none flex items-center" style={{ marginLeft: indent }}>
-            <span className="text-[#00D2FF] mr-2">|--</span> {node.name}
+        <div 
+            onClick={() => onFileSelect(node)} 
+            className="text-[#A0AEC0] font-mono text-xs cursor-pointer hover:text-[#00D2FF] hover:bg-[#15151C]/60 px-1 py-1 rounded select-none flex items-center transition-colors" 
+            style={{ marginLeft: depth > 0 ? '1.5rem' : '0' }}
+        >
+            <span className="text-[#00D2FF] mr-2 opacity-60">|--</span> {node.name}
         </div>
     );
 };
@@ -81,6 +149,8 @@ export function WorkspaceLayout() {
   }, []);
 
   const [fileTree, setFileTree] = useState<any>(null);
+  const [fileSearchQuery, setFileSearchQuery] = useState('');
+  const [fileCategoryFilter, setFileCategoryFilter] = useState<'ALL' | 'CODE' | 'MEDIA' | 'DOCS'>('ALL');
 
   useEffect(() => {
     if (activeView === 'files') {
@@ -88,6 +158,12 @@ export function WorkspaceLayout() {
       (window as any).electronAPI?.ipcRenderer?.invoke('fs:getTreeData', vaultPath).then((data: any) => setFileTree(data));
     }
   }, [activeView]);
+
+  const filteredFileTree = useMemo(() => {
+    if (!fileTree) return null;
+    if (!fileSearchQuery.trim() && fileCategoryFilter === 'ALL') return fileTree;
+    return filterFileTree(fileTree, fileSearchQuery, fileCategoryFilter);
+  }, [fileTree, fileSearchQuery, fileCategoryFilter]);
 
   const isActive = bootState === 'active';
 
@@ -225,15 +301,84 @@ export function WorkspaceLayout() {
                 {/* FILE SYSTEM OVERLAY */}
                 {activeView === 'files' && (
                     <div className="absolute inset-0 z-50 bg-[#0B0B10] pl-[25%] pr-8 py-8 overflow-y-auto flex flex-col font-mono text-xs text-[#A0AEC0]">
-                        <div className="flex justify-between items-center mb-6 pb-4 border-b border-[#1E1E26]">
+                        <div className="flex justify-between items-center mb-4 pb-4 border-b border-[#1E1E26]">
                             <div>
                                 <h2 className="text-white font-bold tracking-widest text-sm font-mono">[ FILE SYSTEM ]</h2>
                                 <p className="text-[#64748B] text-xs font-mono mt-1">Structural Workspace Context & Vault Explorer</p>
                             </div>
                             <button onClick={() => setActiveView(null)} className="text-xs font-bold text-[#A0AEC0] hover:text-white font-mono tracking-widest uppercase">CLOSE [x]</button>
                         </div>
+
+                        {/* Search & Category Filter Controls */}
+                        <div className="flex flex-col md:flex-row gap-3 mb-6 items-stretch md:items-center justify-between">
+                            {/* Search Input Bar */}
+                            <div className="flex items-center bg-[#15151C] border border-[#2A2A35] rounded-lg px-3 py-1.5 flex-1 max-w-md focus-within:border-[#00D2FF] transition-colors">
+                                <span className="text-[#00D2FF] mr-2 font-bold text-xs">[SEARCH]</span>
+                                <input
+                                    type="text"
+                                    value={fileSearchQuery}
+                                    onChange={(e) => setFileSearchQuery(e.target.value)}
+                                    placeholder="Filter files by name or extension..."
+                                    className="bg-transparent outline-none w-full text-[#E2E8F0] placeholder-[#64748B] text-xs font-mono"
+                                />
+                                {fileSearchQuery && (
+                                    <button
+                                        onClick={() => setFileSearchQuery('')}
+                                        className="text-[#64748B] hover:text-white ml-2 text-xs font-bold font-mono px-1"
+                                        title="Clear search"
+                                    >
+                                        [CLR]
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Category Filter Pills */}
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                                {(['ALL', 'CODE', 'MEDIA', 'DOCS'] as const).map((cat) => (
+                                    <button
+                                        key={cat}
+                                        onClick={() => setFileCategoryFilter(cat)}
+                                        className={`px-3 py-1 rounded text-xs font-mono font-bold transition-all ${
+                                            fileCategoryFilter === cat
+                                                ? 'bg-[#00D2FF]/20 text-[#00D2FF] border border-[#00D2FF]'
+                                                : 'bg-[#15151C] text-[#A0AEC0] border border-[#2A2A35] hover:text-white hover:border-[#3E3E4F]'
+                                        }`}
+                                    >
+                                        [{cat}]
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Filtered File Tree / Fallback View */}
                         <div className="flex-1 overflow-y-auto font-mono text-xs">
-                            {fileTree ? <FileTreeNode node={fileTree} onFileSelect={handleFileClick}/> : <div className="text-[#A0AEC0]">SCANNING NEURAL DIRECTORY...</div>}
+                            {fileTree ? (
+                                filteredFileTree ? (
+                                    <FileTreeNode 
+                                        node={filteredFileTree} 
+                                        onFileSelect={handleFileClick} 
+                                        autoExpand={Boolean(fileSearchQuery.trim() || fileCategoryFilter !== 'ALL')} 
+                                    />
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-[#2A2A35] rounded-xl bg-[#15151C]/40 p-8">
+                                        <div className="text-purple-400 font-bold text-sm mb-2 font-mono">[ NO MATCHING FILES FOUND ]</div>
+                                        <p className="text-[#64748B] text-xs max-w-sm mb-4 font-mono">
+                                            No files matching &quot;{fileSearchQuery || fileCategoryFilter}&quot; found in the current workspace tree.
+                                        </p>
+                                        <button 
+                                            onClick={() => { setFileSearchQuery(''); setFileCategoryFilter('ALL'); }}
+                                            className="px-4 py-1.5 bg-[#0B0B10] border border-[#2A2A35] hover:border-[#00D2FF] text-xs text-[#00D2FF] font-bold rounded font-mono transition-colors"
+                                        >
+                                            RESET FILTERS
+                                        </button>
+                                    </div>
+                                )
+                            ) : (
+                                <div className="text-[#A0AEC0] flex items-center gap-2">
+                                    <div className="w-3 h-3 border-2 border-[#00D2FF] border-t-transparent rounded-full animate-spin"></div>
+                                    SCANNING NEURAL DIRECTORY...
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}
