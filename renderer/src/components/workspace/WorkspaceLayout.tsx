@@ -81,9 +81,10 @@ export function WorkspaceLayout() {
 
   useEffect(() => {
     if (activeView === 'files') {
-      (window as any).electronAPI?.ipcRenderer?.invoke('fs:getTreeData', 'C:\\Users\\asus\\.gemini\\antigravity\\scratch').then((data: any) => setFileTree(data));
+      const targetPath = activeWorkspace?.path || 'C:\\Users\\asus\\Downloads';
+      (window as any).electronAPI?.ipcRenderer?.invoke('fs:getTreeData', targetPath).then((data: any) => setFileTree(data));
     }
-  }, [activeView]);
+  }, [activeView, activeWorkspace]);
 
   const isActive = bootState === 'active';
 

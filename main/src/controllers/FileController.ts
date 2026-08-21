@@ -131,8 +131,8 @@ export function initializeFileController(): void {
   }
 
   ipcMain.handle('fs:getTreeData', async (event, rootPath) => {
-      const targetPath = rootPath || require('path').resolve(process.cwd(), '..');
-      return buildFileTree(targetPath);
+      if (!rootPath) return { name: 'NO VAULT SELECTED', type: 'dir', children: [] };
+      return buildFileTree(rootPath);
   });
 
   ipcMain.handle('fs:readFile', async (event, filePath) => {
