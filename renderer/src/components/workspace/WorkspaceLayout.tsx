@@ -15,30 +15,33 @@ import { useWorkspaceUi } from '../../context/WorkspaceUiContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import NeuralGraphDashboard from './NeuralGraphDashboard';
 
-const matchesCategory = (fileName: string, category: 'ALL' | 'CODE' | 'MEDIA' | 'DOCS') => {
-  if (category === 'ALL') return true;
-  const lastDotIndex = fileName.lastIndexOf('.');
-  if (lastDotIndex === -1) return false;
-  const ext = fileName.slice(lastDotIndex).toLowerCase();
-  if (category === 'CODE') {
-    return ['.ts', '.tsx', '.js', '.jsx', '.json', '.py', '.rs', '.go', '.cpp', '.c', '.h', '.hpp', '.css', '.scss', '.html', '.sh', '.bat', '.ps1', '.yaml', '.yml', '.toml', '.sql', '.java', '.env', '.prisma', '.graphql', '.vue', '.svelte'].includes(ext);
-  }
-  if (category === 'MEDIA') {
-    return ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.mp4', '.mp3', '.wav', '.ico', '.bmp', '.mov', '.webm', '.ogg', '.m4a', '.flac', '.avi', '.mkv'].includes(ext);
-  }
-  if (category === 'DOCS') {
-    return ['.md', '.txt', '.pdf', '.doc', '.docx', '.rtf', '.csv', '.log', '.xml', '.epub', '.xlsx', '.xls', '.pptx', '.ppt'].includes(ext);
-  }
-  return true;
-};
+const EXTENSION_MATRIX = [
+  { cat: 'Documents', exts: ['.doc', '.docx', '.docm', '.odt', '.rtf', '.txt', '.pages', '.wps', '.tex', '.md', '.rst'] },
+  { cat: 'PDF / eBooks', exts: ['.pdf', '.epub', '.mobi', '.azw', '.azw3', '.djvu', '.fb2', '.cbr', '.cbz'] },
+  { cat: 'Images', exts: ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.tiff', '.tif', '.svg', '.ico', '.heic', '.heif', '.avif', '.raw'] },
+  { cat: 'Video', exts: ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm', '.m4v', '.mpeg', '.mpg', '.3gp', '.ts'] },
+  { cat: 'Audio', exts: ['.mp3', '.wav', '.flac', '.aac', '.ogg', '.opus', '.m4a', '.wma', '.aiff'] },
+  { cat: 'Archives', exts: ['.zip', '.rar', '.7z', '.tar', '.gz', '.bz2', '.xz', '.zst', '.tgz', '.iso'] },
+  { cat: 'JavaScript / Web', exts: ['.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs', '.html', '.htm', '.css', '.scss', '.sass', '.less', '.vue', '.svelte'] },
+  { cat: 'Python', exts: ['.py', '.pyw', '.pyi', '.ipynb'] },
+  { cat: 'Java / Kotlin', exts: ['.java', '.class', '.jar', '.kt', '.kts'] },
+  { cat: 'C / C++', exts: ['.c', '.h', '.cc', '.cpp', '.cxx', '.hpp', '.hh'] },
+  { cat: 'C# / .NET', exts: ['.cs', '.csx', '.csproj', '.sln'] },
+  { cat: 'Rust / Go', exts: ['.rs', '.go', '.mod', '.sum', '.toml'] },
+  { cat: 'SQL / Database', exts: ['.sql', '.db', '.sqlite', '.sqlite3', '.mdb'] },
+  { cat: 'JSON / Data', exts: ['.json', '.jsonl', '.ndjson', '.yaml', '.yml', '.xml', '.csv', '.tsv', '.toml', '.ini', '.conf', '.env'] },
+  { cat: 'Shell / Scripts', exts: ['.sh', '.bash', '.zsh', '.fish', '.bat', '.cmd', '.ps1'] },
+  { cat: 'Docker / DevOps', exts: ['.dockerfile', '.yaml', '.yml', '.tf', '.tfvars', '.hcl'] },
+  { cat: 'Design / 3D', exts: ['.psd', '.ai', '.fig', '.blend', '.fbx', '.obj', '.gltf', '.glb'] }
+];
 
-const filterFileTree = (node: any, query: string, category: 'ALL' | 'CODE' | 'MEDIA' | 'DOCS'): any => {
+const filterFileTree = (node: any, query: string, activeExts: string[]): any => {
   if (!node) return null;
   const cleanQuery = query.trim().toLowerCase();
 
   if (node.type === 'dir') {
     const filteredChildren = (node.children || [])
-      .map((child: any) => filterFileTree(child, query, category))
+      .map((child: any) => filterFileTree(child, query, activeExts))
       .filter(Boolean);
 
     if (filteredChildren.length > 0) {
@@ -51,9 +54,19 @@ const filterFileTree = (node: any, query: string, category: 'ALL' | 'CODE' | 'ME
   }
 
   const matchesSearch = cleanQuery ? node.name.toLowerCase().includes(cleanQuery) : true;
-  const matchesCat = matchesCategory(node.name, category);
+  
+  let matchesExt = true;
+  if (activeExts.length > 0) {
+    const lastDotIndex = node.name.lastIndexOf('.');
+    if (lastDotIndex === -1) {
+      matchesExt = false;
+    } else {
+      const ext = node.name.slice(lastDotIndex).toLowerCase();
+      matchesExt = activeExts.includes(ext);
+    }
+  }
 
-  if (matchesSearch && matchesCat) {
+  if (matchesSearch && matchesExt) {
     return node;
   }
   return null;
@@ -150,7 +163,15 @@ export function WorkspaceLayout() {
 
   const [fileTree, setFileTree] = useState<any>(null);
   const [fileSearchQuery, setFileSearchQuery] = useState('');
-  const [fileCategoryFilter, setFileCategoryFilter] = useState<'ALL' | 'CODE' | 'MEDIA' | 'DOCS'>('ALL');
+  const [isFsFilterOpen, setIsFsFilterOpen] = useState(false);
+  const [selectedExtensions, setSelectedExtensions] = useState<string[]>([]);
+  const [fsFilterSearchQuery, setFsFilterSearchQuery] = useState('');
+
+  const toggleExtension = (ext: string) => {
+    setSelectedExtensions(prev => 
+      prev.includes(ext) ? prev.filter(e => e !== ext) : [...prev, ext]
+    );
+  };
 
   useEffect(() => {
     if (activeView === 'files') {
@@ -161,9 +182,9 @@ export function WorkspaceLayout() {
 
   const filteredFileTree = useMemo(() => {
     if (!fileTree) return null;
-    if (!fileSearchQuery.trim() && fileCategoryFilter === 'ALL') return fileTree;
-    return filterFileTree(fileTree, fileSearchQuery, fileCategoryFilter);
-  }, [fileTree, fileSearchQuery, fileCategoryFilter]);
+    if (!fileSearchQuery.trim() && selectedExtensions.length === 0) return fileTree;
+    return filterFileTree(fileTree, fileSearchQuery, selectedExtensions);
+  }, [fileTree, fileSearchQuery, selectedExtensions]);
 
   const isActive = bootState === 'active';
 
@@ -309,45 +330,162 @@ export function WorkspaceLayout() {
                             <button onClick={() => setActiveView(null)} className="text-xs font-bold text-[#A0AEC0] hover:text-white font-mono tracking-widest uppercase">CLOSE [x]</button>
                         </div>
 
-                        {/* Search & Category Filter Controls */}
-                        <div className="flex flex-col md:flex-row gap-3 mb-6 items-stretch md:items-center justify-between">
-                            {/* Search Input Bar */}
-                            <div className="flex items-center bg-[#15151C] border border-[#2A2A35] rounded-lg px-3 py-1.5 flex-1 max-w-md focus-within:border-[#00D2FF] transition-colors">
-                                <span className="text-[#00D2FF] mr-2 font-bold text-xs">[SEARCH]</span>
-                                <input
-                                    type="text"
-                                    value={fileSearchQuery}
-                                    onChange={(e) => setFileSearchQuery(e.target.value)}
-                                    placeholder="Filter files by name or extension..."
-                                    className="bg-transparent outline-none w-full text-[#E2E8F0] placeholder-[#64748B] text-xs font-mono"
-                                />
-                                {fileSearchQuery && (
-                                    <button
-                                        onClick={() => setFileSearchQuery('')}
-                                        className="text-[#64748B] hover:text-white ml-2 text-xs font-bold font-mono px-1"
-                                        title="Clear search"
-                                    >
-                                        [CLR]
-                                    </button>
+                        {/* Search & Filter Bar Controls */}
+                        <div className="flex flex-col gap-3 mb-6 relative z-30">
+                            <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+                                {/* Search Input Bar */}
+                                <div className="flex items-center bg-[#15151C] border border-[#2A2A35] rounded-lg px-3 py-1.5 flex-1 max-w-md focus-within:border-[#00D2FF] transition-colors">
+                                    <span className="text-[#00D2FF] mr-2 font-bold text-xs">[SEARCH]</span>
+                                    <input
+                                        type="text"
+                                        value={fileSearchQuery}
+                                        onChange={(e) => setFileSearchQuery(e.target.value)}
+                                        placeholder="Filter files by name..."
+                                        className="bg-transparent outline-none w-full text-[#E2E8F0] placeholder-[#64748B] text-xs font-mono"
+                                    />
+                                    {fileSearchQuery && (
+                                        <button
+                                            onClick={() => setFileSearchQuery('')}
+                                            className="text-[#64748B] hover:text-white ml-2 text-xs font-bold font-mono px-1"
+                                            title="Clear search"
+                                        >
+                                            [CLR]
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* [F] FILTERS Toggle Button */}
+                                <button
+                                    onClick={() => setIsFsFilterOpen(!isFsFilterOpen)}
+                                    className={`px-4 py-1.5 rounded-lg text-xs font-mono font-bold flex items-center gap-2 border transition-all ${
+                                        isFsFilterOpen || selectedExtensions.length > 0
+                                            ? 'bg-purple-900/30 text-purple-300 border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.3)]'
+                                            : 'bg-[#15151C] text-[#A0AEC0] border-[#2A2A35] hover:text-white hover:border-[#3E3E4F]'
+                                    }`}
+                                >
+                                    <span>[F] FILTERS</span>
+                                    {selectedExtensions.length > 0 && (
+                                        <span className="bg-purple-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                                            {selectedExtensions.length}
+                                        </span>
+                                    )}
+                                </button>
+
+                                {/* Active Extension Badges */}
+                                {selectedExtensions.length > 0 && (
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                        {selectedExtensions.slice(0, 4).map((ext) => (
+                                            <span key={ext} className="bg-purple-900/40 border border-purple-500/50 text-purple-300 text-[10px] font-mono px-2 py-0.5 rounded-full flex items-center gap-1">
+                                                {ext}
+                                                <button onClick={() => toggleExtension(ext)} className="hover:text-white font-bold ml-0.5">×</button>
+                                            </span>
+                                        ))}
+                                        {selectedExtensions.length > 4 && (
+                                            <span className="text-[10px] font-mono text-purple-400">+{selectedExtensions.length - 4} more</span>
+                                        )}
+                                        <button 
+                                            onClick={() => setSelectedExtensions([])}
+                                            className="text-[10px] font-mono text-[#64748B] hover:text-white underline ml-1"
+                                        >
+                                            [Clear All]
+                                        </button>
+                                    </div>
                                 )}
                             </div>
 
-                            {/* Category Filter Pills */}
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                                {(['ALL', 'CODE', 'MEDIA', 'DOCS'] as const).map((cat) => (
-                                    <button
-                                        key={cat}
-                                        onClick={() => setFileCategoryFilter(cat)}
-                                        className={`px-3 py-1 rounded text-xs font-mono font-bold transition-all ${
-                                            fileCategoryFilter === cat
-                                                ? 'bg-[#00D2FF]/20 text-[#00D2FF] border border-[#00D2FF]'
-                                                : 'bg-[#15151C] text-[#A0AEC0] border border-[#2A2A35] hover:text-white hover:border-[#3E3E4F]'
-                                        }`}
+                            {/* Graph Filters Matrix Panel Dropdown */}
+                            <AnimatePresence>
+                                {isFsFilterOpen && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: -8, scale: 0.98 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, y: -8, scale: 0.98 }}
+                                        transition={{ duration: 0.15 }}
+                                        className="w-full max-w-2xl bg-[#0B0B10] border border-[#2A2A35] rounded-xl shadow-[0_0_30px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col mt-2"
                                     >
-                                        [{cat}]
-                                    </button>
-                                ))}
-                            </div>
+                                        <div className="flex items-center justify-between border-b border-[#1E1E26] p-3 bg-[#13131A]">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs font-mono font-bold tracking-wider text-purple-400">[ FILTER MATRIX SETTINGS ]</span>
+                                                {selectedExtensions.length > 0 && (
+                                                    <span className="text-[10px] font-mono text-[#64748B]">({selectedExtensions.length} active)</span>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                {selectedExtensions.length > 0 && (
+                                                    <button 
+                                                        onClick={() => setSelectedExtensions([])}
+                                                        className="text-[10px] font-mono text-purple-400 hover:text-white uppercase"
+                                                    >
+                                                        [Clear All]
+                                                    </button>
+                                                )}
+                                                <button 
+                                                    onClick={() => setIsFsFilterOpen(false)} 
+                                                    className="text-zinc-500 hover:text-red-400 font-mono text-xs px-1.5 py-0.5 border border-zinc-800 rounded bg-zinc-900 transition-colors"
+                                                >
+                                                    [x]
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="p-3 border-b border-[#1E1E26] bg-[#0E0E14]">
+                                            <input 
+                                                type="text" 
+                                                value={fsFilterSearchQuery} 
+                                                onChange={(e) => setFsFilterSearchQuery(e.target.value)} 
+                                                placeholder="[ SEARCH CATEGORIES OR EXTENSIONS... ]" 
+                                                className="w-full bg-[#15151C] border border-[#2A2A35] rounded px-3 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-cyan-500 placeholder-[#64748B]"
+                                            />
+                                        </div>
+
+                                        <div className="max-h-72 overflow-y-auto p-4 flex flex-col gap-3 scrollbar-thin">
+                                            {EXTENSION_MATRIX.filter(catData => {
+                                                if (!fsFilterSearchQuery) return true;
+                                                const query = fsFilterSearchQuery.toLowerCase();
+                                                return catData.cat.toLowerCase().includes(query) || catData.exts.some(e => e.toLowerCase().includes(query));
+                                            }).map(catData => {
+                                                const query = fsFilterSearchQuery.toLowerCase();
+                                                const isExpanded = query.length > 0 && (catData.cat.toLowerCase().includes(query) || catData.exts.some(e => e.toLowerCase().includes(query)));
+                                                const activeCountInCat = catData.exts.filter(e => selectedExtensions.includes(e)).length;
+
+                                                return (
+                                                    <details key={catData.cat} className="border border-white/5 rounded-lg overflow-hidden bg-[#121218]" open={isExpanded || false}>
+                                                        <summary className="bg-[#15151C] px-3 py-2 text-[11px] font-mono text-gray-300 cursor-pointer select-none outline-none hover:text-white hover:bg-white/5 flex justify-between items-center">
+                                                            <span className="font-bold">{catData.cat.toUpperCase()}</span>
+                                                            {activeCountInCat > 0 && (
+                                                                <span className="text-[10px] text-purple-400 font-bold bg-purple-900/30 px-2 py-0.5 rounded border border-purple-500/40">
+                                                                    {activeCountInCat} active
+                                                                </span>
+                                                            )}
+                                                        </summary>
+                                                        <div className="p-2.5 flex flex-wrap gap-1.5 bg-[#0B0B10]">
+                                                            {catData.exts.map(ext => {
+                                                                const isSelected = selectedExtensions.includes(ext);
+                                                                const isMatch = query.length > 0 && ext.toLowerCase().includes(query);
+                                                                return (
+                                                                    <button 
+                                                                        key={ext} 
+                                                                        onClick={() => toggleExtension(ext)}
+                                                                        className={`px-2.5 py-1 text-[10px] font-mono rounded border transition-all ${
+                                                                            isSelected 
+                                                                                ? 'bg-purple-900/40 border-purple-500 text-purple-200 shadow-[0_0_8px_rgba(168,85,247,0.4)] font-bold' 
+                                                                                : (isMatch 
+                                                                                    ? 'bg-purple-900/20 border-purple-500/50 text-white' 
+                                                                                    : 'bg-[#15151C] border-[#2A2A35] text-gray-400 hover:bg-[#1E1E26] hover:text-white')
+                                                                        }`}
+                                                                    >
+                                                                        {ext}
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </details>
+                                                );
+                                            })}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
 
                         {/* Filtered File Tree / Fallback View */}
@@ -357,16 +495,16 @@ export function WorkspaceLayout() {
                                     <FileTreeNode 
                                         node={filteredFileTree} 
                                         onFileSelect={handleFileClick} 
-                                        autoExpand={Boolean(fileSearchQuery.trim() || fileCategoryFilter !== 'ALL')} 
+                                        autoExpand={Boolean(fileSearchQuery.trim() || selectedExtensions.length > 0)} 
                                     />
                                 ) : (
                                     <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-[#2A2A35] rounded-xl bg-[#15151C]/40 p-8">
                                         <div className="text-purple-400 font-bold text-sm mb-2 font-mono">[ NO MATCHING FILES FOUND ]</div>
                                         <p className="text-[#64748B] text-xs max-w-sm mb-4 font-mono">
-                                            No files matching &quot;{fileSearchQuery || fileCategoryFilter}&quot; found in the current workspace tree.
+                                            No files matching active search/extension criteria found in current workspace tree.
                                         </p>
                                         <button 
-                                            onClick={() => { setFileSearchQuery(''); setFileCategoryFilter('ALL'); }}
+                                            onClick={() => { setFileSearchQuery(''); setSelectedExtensions([]); }}
                                             className="px-4 py-1.5 bg-[#0B0B10] border border-[#2A2A35] hover:border-[#00D2FF] text-xs text-[#00D2FF] font-bold rounded font-mono transition-colors"
                                         >
                                             RESET FILTERS
