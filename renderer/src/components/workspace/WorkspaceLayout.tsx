@@ -252,18 +252,31 @@ export function WorkspaceLayout() {
                 </div>
 
                 {/* Center Panel (Code View) */}
-                <div className="flex-1 flex flex-col bg-[#0B0B10]">
-                    <div className="h-14 border-b border-[#1E1E26] flex items-center px-4 gap-6 text-xs font-bold text-[#E2E8F0]">
-                        <div className="cursor-pointer hover:text-[#00D2FF]">[G] GRAPH VIEW</div>
-                        <div className="cursor-pointer hover:text-[#00D2FF]">[F] GRAPH FILTERS</div>
-                        <div className="cursor-pointer hover:text-[#00D2FF]">[O] OPTIONS</div>
-                        <div className="flex-1"></div>
-                        <div className="w-64 border border-[#1E1E26] rounded px-3 py-1 bg-[#15151C] text-[#A0AEC0]">
+                <div className="flex-1 flex flex-col bg-[#0B0B10] min-w-0">
+                    <div className="h-14 border-b border-[#1E1E26] flex items-center px-4 gap-6 text-xs font-bold text-[#E2E8F0] justify-between">
+                        <div className="cursor-pointer hover:text-[#00D2FF] whitespace-nowrap">[G] GRAPH VIEW</div>
+                        <div className="cursor-pointer hover:text-[#00D2FF] whitespace-nowrap">[F] GRAPH FILTERS</div>
+                        <div className="cursor-pointer hover:text-[#00D2FF] whitespace-nowrap">[O] OPTIONS</div>
+                        <div className="w-64 border border-[#1E1E26] rounded px-3 py-1 bg-[#15151C] text-[#A0AEC0] whitespace-nowrap hidden lg:block">
                             [SEARCH] Search nodes, paths, risk:high...
                         </div>
+                        <div className="flex flex-row items-center gap-4 ml-auto pr-8">
+                            <button 
+                                onClick={() => setActiveView('files')} 
+                                className="text-[#A0AEC0] hover:text-[#00D2FF] font-bold text-xs whitespace-nowrap border border-[#2A2A35] bg-[#0B0B10] px-4 py-1.5 rounded-full"
+                            >
+                                [ &lt; BACK TO TREE ]
+                            </button>
+                            <button 
+                                onClick={() => { setActiveView(null); setActiveFile(null); }} 
+                                className="text-[#A0AEC0] hover:text-white font-bold text-sm px-4 whitespace-nowrap"
+                            >
+                                CLOSE [x]
+                            </button>
+                        </div>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-6">
-                        <pre className="font-mono text-sm text-[#A0AEC0] whitespace-pre-wrap">
+                    <div className="flex-1 overflow-y-auto p-6 min-w-0">
+                        <pre className="font-mono text-sm text-[#A0AEC0] overflow-hidden break-all whitespace-pre-wrap">
                             {activeFile.content}
                         </pre>
                     </div>
