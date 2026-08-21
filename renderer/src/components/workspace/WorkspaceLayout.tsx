@@ -29,7 +29,7 @@ const FileTreeNode = ({ node, depth = 0, onFileSelect }: { node: any; depth?: nu
                     [{isExpanded ? '-' : '+'}] [DIR] {node.name}
                 </div>
                 {isExpanded && (
-                    <div className="border-l border-[#2A2A35] ml-2 pl-2">
+                    <div className="border-l border-dashed border-[#2A2A35] ml-2 pl-4 mt-1 flex flex-col gap-1">
                         {node.children?.map((child: any, i: number) => (
                             <FileTreeNode key={`${child.name}-${i}`} node={child} depth={depth + 1} onFileSelect={onFileSelect} />
                         ))}
@@ -197,11 +197,19 @@ export function WorkspaceLayout() {
         {activeView === 'files' && (
             <div className="absolute top-24 left-[280px] right-0 bottom-0 bg-[#0B0B10] z-40 p-8 overflow-y-auto border-l border-t border-[#1E1E26]">
                 <div className="mb-6 mr-16">
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-6 mb-2">
                         <h2 className="text-white font-bold tracking-widest text-lg">[ FILE SYSTEM ]</h2>
+                        <div className="flex items-center border border-[#2A2A35] rounded-full px-4 py-1.5 text-xs text-[#A0AEC0] bg-[#0B0B10]">
+                            <span className="font-bold text-white mr-4 hover:text-[#00D2FF] cursor-pointer">[F] GRAPH FILTERS</span>
+                            <span className="font-bold text-white mr-4 border-l border-[#2A2A35] pl-4 hover:text-[#00D2FF] cursor-pointer">[O] OPTIONS</span>
+                            <span className="border-l border-[#2A2A35] pl-4 flex items-center">
+                                <span className="mr-2 text-white">[SEARCH]</span>
+                                <input type="text" placeholder="Search nodes, paths, risk:high..." className="bg-transparent outline-none w-64 text-[#A0AEC0] placeholder-[#64748B]" />
+                            </span>
+                        </div>
                         <button onClick={() => setActiveView(null)} className="text-[#A0AEC0] hover:text-white ml-auto">CLOSE [x]</button>
                     </div>
-                    <p className="text-[#64748B] text-xs font-mono mt-2 mb-4">Structural Workspace Context</p>
+                    <p className="text-[#64748B] text-xs font-mono mt-1 mb-4">Structural Workspace Context</p>
                     <hr className="border-[#1E1E26]" />
                 </div>
                 
