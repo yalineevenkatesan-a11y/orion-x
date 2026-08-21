@@ -113,25 +113,26 @@ export function initializeFileController(): void {
     }
   });
 
+  const fsNode = require('fs');
+  const pathNode = require('path');
+  function buildFileTree(dirPath: string): any {
+      const stats = fsNode.statSync(dirPath);
+      if (!stats.isDirectory()) {
+          return { name: pathNode.basename(dirPath), type: 'file', path: dirPath };
+      }
+      const ignores = ['.git', 'node_modules', 'dist', '.next', 'out'];
+      let children = [];
+      try {
+        children = fsNode.readdirSync(dirPath)
+          .filter((child: string) => !ignores.includes(child))
+          .map((child: string) => buildFileTree(pathNode.join(dirPath, child)));
+      } catch (e) {}
+      return { name: pathNode.basename(dirPath), type: 'dir', children, path: dirPath };
+  }
+
   ipcMain.handle('fs:getTreeData', async (event, rootPath) => {
-    const fsNode = require('fs');
-    const pathNode = require('path');
-    function buildFileTree(dirPath: string): any {
-        const stats = fsNode.statSync(dirPath);
-        if (!stats.isDirectory()) {
-            return { name: pathNode.basename(dirPath), type: 'file', path: dirPath };
-        }
-        const ignores = ['.git', 'node_modules', 'dist', '.next', 'out'];
-        let children = [];
-        try {
-          children = fsNode.readdirSync(dirPath)
-            .filter((child: string) => !ignores.includes(child))
-            .map((child: string) => buildFileTree(pathNode.join(dirPath, child)));
-        } catch (e) {}
-        return { name: pathNode.basename(dirPath), type: 'dir', children, path: dirPath };
-    }
-    const targetPath = rootPath || process.cwd(); 
-    return buildFileTree(targetPath);
+      const targetPath = rootPath || require('path').resolve(process.cwd(), '..');
+      return buildFileTree(targetPath);
   });
 
   ipcMain.handle('fs:readFile', async (event, filePath) => {
