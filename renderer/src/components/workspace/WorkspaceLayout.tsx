@@ -203,86 +203,97 @@ export function WorkspaceLayout() {
             </div>
         )}
 
-        {activeView === 'files' && (
-            <div className="fixed top-[80px] left-[260px] right-0 bottom-0 bg-[#0B0B10] z-[100] p-8 overflow-y-auto border-l border-t border-[#1E1E26]">
+        {(activeView === 'files' || activeView === 'chat') && (
+            <div className="flex flex-row flex-1 overflow-hidden w-full absolute top-16 bottom-8 z-50 bg-[#0B0B10]">
                 
-                <div className="flex flex-row items-center justify-between w-full mb-6">
-                    <div className="flex flex-row items-center gap-6">
-                        <h2 className="text-white font-bold tracking-widest text-xl whitespace-nowrap">[ FILE SYSTEM ]</h2>
-                        
-                        <div className="flex flex-row items-center border border-[#2A2A35] rounded-full px-4 py-1.5 text-xs text-[#A0AEC0] bg-[#0B0B10]">
-                            <span className="font-bold text-white mr-4 hover:text-[#00D2FF] cursor-pointer whitespace-nowrap px-2">[F] GRAPH FILTERS</span>
-                            <span className="font-bold text-white mr-4 border-l border-[#2A2A35] pl-4 hover:text-[#00D2FF] cursor-pointer whitespace-nowrap">[O] OPTIONS</span>
-                            <span className="border-l border-[#2A2A35] pl-4 flex flex-row items-center min-w-[250px]">
-                                <span className="mr-3 text-white font-bold whitespace-nowrap">[SEARCH]</span>
-                                <input type="text" placeholder="Search nodes, paths, risk:high..." className="bg-transparent outline-none w-full text-[#A0AEC0] placeholder-[#64748B]" />
-                            </span>
-                        </div>
+                {/* LEFT SIDEBAR (MUST BE FIXED WIDTH & VISIBLE) */}
+                <aside className="w-[280px] border-r border-[#1E1E26] flex flex-col justify-between bg-[#15151C] shrink-0 p-4 h-full">
+                    <div className="flex flex-col gap-1 border border-[#2A2A35] rounded-md bg-[#0B0B10] overflow-hidden text-sm font-mono">
+                        <div onClick={() => setActiveView('files')} className={`px-4 py-3 font-bold cursor-pointer ${activeView === 'files' ? 'bg-[#2A2A35] text-white' : 'text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26]'}`}>[DIR] Files View</div>
+                        <div className="px-4 py-3 text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26] cursor-pointer">Global Search</div>
+                        <div onClick={() => setActiveView('chat')} className={`px-4 py-3 font-bold cursor-pointer ${activeView === 'chat' ? 'bg-[#2A2A35] text-white' : 'text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26]'}`}>Multi-Agent Chat Console</div>
                     </div>
+                </aside>
+
+                {/* INTERACTIVE CORE WORKSPACE (MUST FILL REMAINING SCREEN) */}
+                <main className="flex-1 flex flex-col p-8 overflow-y-auto bg-[#0B0B10] h-full relative">
+                    {activeView === 'files' && (
+                        <div className="w-full h-full max-w-none flex flex-col">
+                            <div className="mb-6 w-full">
+                                <div className="flex flex-row items-center justify-between w-full mb-2">
+                                    <div className="flex items-center gap-6">
+                                        <h2 className="text-white font-bold tracking-widest text-lg whitespace-nowrap">[ FILE SYSTEM ]</h2>
+                                        <div className="flex flex-row items-center border border-[#2A2A35] rounded-full px-4 py-1.5 text-xs text-[#A0AEC0] bg-[#0B0B10]">
+                                            <span className="font-bold text-white mr-4 hover:text-[#00D2FF] cursor-pointer whitespace-nowrap">[F] GRAPH FILTERS</span>
+                                            <span className="font-bold text-white mr-4 border-l border-[#2A2A35] pl-4 hover:text-[#00D2FF] cursor-pointer whitespace-nowrap">[O] OPTIONS</span>
+                                            <span className="border-l border-[#2A2A35] pl-4 flex flex-row items-center min-w-[300px]">
+                                                <span className="mr-3 text-[#A0AEC0] whitespace-nowrap">[SEARCH]</span>
+                                                <input type="text" placeholder="Search nodes, paths, risk:high..." className="bg-transparent outline-none w-full text-[#A0AEC0] placeholder-[#2A2A35]" />
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => setActiveView(null)} className="text-[#A0AEC0] hover:text-white font-bold text-sm px-4 whitespace-nowrap">
+                                        CLOSE [x]
+                                    </button>
+                                </div>
+                                <p className="text-[#64748B] text-xs font-mono mt-2 mb-4">Structural Workspace Context</p>
+                                <hr className="border-[#1E1E26] w-full" />
+                            </div>
+                            
+                            <div className="font-mono text-sm leading-tight mt-6 flex-1 overflow-y-auto">
+                                {fileTree ? <FileTreeNode node={fileTree} onFileSelect={handleFileClick}/> : <div className="text-[#A0AEC0]">SCANNING NEURAL DIRECTORY...</div>}
+                            </div>
+                        </div>
+                    )}
                     
-                    <button onClick={() => setActiveView(null)} className="text-[#A0AEC0] hover:text-white font-bold text-sm px-4 whitespace-nowrap">
-                        CLOSE [x]
-                    </button>
-                </div>
-                
-                <hr className="border-[#1E1E26] w-full mb-6" />
-                
-                <div className="font-mono text-sm leading-tight">
-                    {fileTree ? <FileTreeNode node={fileTree} onFileSelect={handleFileClick} /> : <div className="text-[#A0AEC0]">SCANNING NEURAL DIRECTORY...</div>}
-                </div>
-                
-            </div>
-        )}
+                    {activeView === 'chat' && (
+                        <div className="w-full h-full flex flex-col gap-6">
+                            <div className="mb-6 w-full">
+                                <div className="flex flex-row items-center justify-between w-full mb-2">
+                                    <h2 className="text-white font-bold tracking-widest text-lg whitespace-nowrap">[ CHAT CONSOLE ]</h2>
+                                    <button onClick={() => setActiveView(null)} className="text-[#A0AEC0] hover:text-white font-bold text-sm px-4 whitespace-nowrap">
+                                        CLOSE [x]
+                                    </button>
+                                </div>
+                                <p className="text-[#64748B] text-xs font-mono mt-2 mb-4">Diagnostic Multi-Persona Simulation</p>
+                                <hr className="border-[#1E1E26] w-full" />
+                            </div>
 
-        {activeView === 'chat' && (
-            <div className="fixed top-[80px] left-[260px] right-0 bottom-0 bg-[#0B0B10] z-[100] p-8 overflow-y-auto border-l border-t border-[#1E1E26]">
-                <div className="w-full h-full flex flex-col gap-6">
-                    <div className="mb-6 mr-16 w-full">
-                        <div className="flex flex-row items-center justify-between w-full mb-2">
-                            <div className="flex items-center gap-6">
-                                <h2 className="text-white font-bold tracking-widest text-lg whitespace-nowrap">[ CHAT CONSOLE ]</h2>
+                            {/* Persona Diagnostic Cards */}
+                            <div className="flex flex-row gap-4 shrink-0">
+                                <div className="flex-1 p-4 border border-[#2A2A35] rounded-xl bg-[#15151C] font-mono text-xs">
+                                    <div className="flex justify-between font-bold">
+                                        <span className="text-[#00D2FF]">[AGENT: SPARK]</span>
+                                        <span className="text-white">[IDLE]</span>
+                                    </div>
+                                    <div className="mt-3 text-[#64748B] h-20 overflow-y-auto">SPARK_AI kernel loaded. Awaiting instructions...</div>
+                                </div>
+                                <div className="flex-1 p-4 border border-[#2A2A35] rounded-xl bg-[#15151C] font-mono text-xs">
+                                    <div className="flex justify-between font-bold">
+                                        <span className="text-[#00D2FF]">[AGENT: VECTOR]</span>
+                                        <span className="text-white">[IDLE]</span>
+                                    </div>
+                                    <div className="mt-3 text-[#64748B] h-20 overflow-y-auto">VECTOR_AI spatial engine loaded. Standing by...</div>
+                                </div>
+                                <div className="flex-1 p-4 border border-[#2A2A35] rounded-xl bg-[#15151C] font-mono text-xs">
+                                    <div className="flex justify-between font-bold">
+                                        <span className="text-[#00D2FF]">[AGENT: LOGIC]</span>
+                                        <span className="text-white">[IDLE]</span>
+                                    </div>
+                                    <div className="mt-3 text-[#64748B] h-20 overflow-y-auto">LOGIC_AI analytical core loaded. System nominal...</div>
+                                </div>
                             </div>
-                            <button onClick={() => setActiveView(null)} className="text-[#A0AEC0] hover:text-white font-bold text-sm px-4 whitespace-nowrap">
-                                CLOSE [x]
-                            </button>
-                        </div>
-                        <p className="text-[#64748B] text-xs font-mono mt-2 mb-4">Diagnostic Multi-Persona Simulation</p>
-                        <hr className="border-[#1E1E26] w-full" />
-                    </div>
 
-                    {/* Persona Diagnostic Cards */}
-                    <div className="flex flex-row gap-4 shrink-0">
-                        <div className="flex-1 p-4 border border-[#2A2A35] rounded-xl bg-[#15151C] font-mono text-xs">
-                            <div className="flex justify-between font-bold">
-                                <span className="text-[#00D2FF]">[AGENT: SPARK]</span>
-                                <span className="text-white">[IDLE]</span>
+                            {/* Main Chat Interface */}
+                            <div className="flex-1 flex flex-col border border-[#1E1E26] bg-[#050508] p-4 rounded-xl relative overflow-hidden min-h-[300px]">
+                                <div className="flex-1 overflow-y-auto font-mono text-sm leading-tight text-[#A0AEC0] p-2 space-y-4 pb-16">
+                                    {/* Simulated messages go here */}
+                                </div>
+                                <input type="text" placeholder="Send a message to all agents..." className="absolute bottom-4 left-4 right-4 bg-[#0B0B10] border border-[#2A2A35] rounded-full px-6 py-2 text-[#A0AEC0] placeholder-[#64748B] outline-none font-mono text-xs" />
                             </div>
-                            <div className="mt-3 text-[#64748B] h-20 overflow-y-auto">SPARK_AI kernel loaded. Awaiting instructions...</div>
                         </div>
-                        <div className="flex-1 p-4 border border-[#2A2A35] rounded-xl bg-[#15151C] font-mono text-xs">
-                            <div className="flex justify-between font-bold">
-                                <span className="text-[#00D2FF]">[AGENT: VECTOR]</span>
-                                <span className="text-white">[IDLE]</span>
-                            </div>
-                            <div className="mt-3 text-[#64748B] h-20 overflow-y-auto">VECTOR_AI spatial engine loaded. Standing by...</div>
-                        </div>
-                        <div className="flex-1 p-4 border border-[#2A2A35] rounded-xl bg-[#15151C] font-mono text-xs">
-                            <div className="flex justify-between font-bold">
-                                <span className="text-[#00D2FF]">[AGENT: LOGIC]</span>
-                                <span className="text-white">[IDLE]</span>
-                            </div>
-                            <div className="mt-3 text-[#64748B] h-20 overflow-y-auto">LOGIC_AI analytical core loaded. System nominal...</div>
-                        </div>
-                    </div>
-
-                    {/* Main Chat Interface */}
-                    <div className="flex-1 flex flex-col border border-[#1E1E26] bg-[#050508] p-4 rounded-xl relative overflow-hidden min-h-[300px]">
-                        <div className="flex-1 overflow-y-auto font-mono text-sm leading-tight text-[#A0AEC0] p-2 space-y-4 pb-16">
-                            {/* Simulated messages go here */}
-                        </div>
-                        <input type="text" placeholder="Send a message to all agents..." className="absolute bottom-4 left-4 right-4 bg-[#0B0B10] border border-[#2A2A35] rounded-full px-6 py-2 text-[#A0AEC0] placeholder-[#64748B] outline-none font-mono text-xs" />
-                    </div>
-                </div>
+                    )}
+                </main>
             </div>
         )}
 
