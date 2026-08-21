@@ -130,9 +130,10 @@ export function initializeFileController(): void {
       return { name: pathNode.basename(dirPath), type: 'dir', children, path: dirPath };
   }
 
-  ipcMain.handle('fs:getTreeData', async (event, rootPath) => {
-      if (!rootPath) return { name: 'NO VAULT SELECTED', type: 'dir', children: [] };
-      return buildFileTree(rootPath);
+  ipcMain.handle('fs:getTreeData', async (event, targetPath) => {
+      // If frontend doesn't send a path, fallback directly to Downloads
+      const finalPath = targetPath || 'C:\\Users\\asus\\Downloads';
+      return buildFileTree(finalPath);
   });
 
   ipcMain.handle('fs:readFile', async (event, filePath) => {

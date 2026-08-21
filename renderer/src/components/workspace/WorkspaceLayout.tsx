@@ -81,10 +81,10 @@ export function WorkspaceLayout() {
 
   useEffect(() => {
     if (activeView === 'files') {
-      const targetPath = activeWorkspace?.path || 'C:\\Users\\asus\\Downloads';
-      (window as any).electronAPI?.ipcRenderer?.invoke('fs:getTreeData', targetPath).then((data: any) => setFileTree(data));
+      const vaultPath = 'C:\\Users\\asus\\Downloads'; 
+      (window as any).electronAPI?.ipcRenderer?.invoke('fs:getTreeData', vaultPath).then((data: any) => setFileTree(data));
     }
-  }, [activeView, activeWorkspace]);
+  }, [activeView]);
 
   const isActive = bootState === 'active';
 
