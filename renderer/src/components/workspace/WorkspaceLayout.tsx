@@ -166,6 +166,28 @@ export function WorkspaceLayout() {
   const [isFsFilterOpen, setIsFsFilterOpen] = useState(false);
   const [selectedExtensions, setSelectedExtensions] = useState<string[]>([]);
   const [fsFilterSearchQuery, setFsFilterSearchQuery] = useState('');
+  const [expandedCats, setExpandedCats] = useState<Record<string, boolean>>({
+    'Documents': true,
+    'JavaScript / Web': true,
+    'Python': true,
+    'Images': true
+  });
+
+  const toggleCat = (catName: string) => {
+    setExpandedCats(prev => ({
+      ...prev,
+      [catName]: !prev[catName]
+    }));
+  };
+
+  const toggleAllInCategory = (exts: string[]) => {
+    const allSelected = exts.length > 0 && exts.every(e => selectedExtensions.includes(e));
+    if (allSelected) {
+      setSelectedExtensions(prev => prev.filter(e => !exts.includes(e)));
+    } else {
+      setSelectedExtensions(prev => Array.from(new Set([...prev, ...exts])));
+    }
+  };
 
   const toggleExtension = (ext: string) => {
     setSelectedExtensions(prev => 
@@ -321,8 +343,14 @@ export function WorkspaceLayout() {
 
                 {/* FILE SYSTEM OVERLAY */}
                 {activeView === 'files' && (
-                    <div className="absolute inset-0 z-50 bg-[#0B0B10] pl-[25%] pr-8 py-8 overflow-y-auto flex flex-col font-mono text-xs text-[#A0AEC0]">
-                        <div className="flex justify-between items-center mb-4 pb-4 border-b border-[#1E1E26]">
+                    <div 
+                        onWheel={(e) => e.stopPropagation()}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onTouchStart={(e) => e.stopPropagation()}
+                        className="absolute inset-0 z-50 bg-[#0B0B10] pl-[25%] pr-8 py-8 h-full max-h-screen overflow-y-auto pointer-events-auto flex flex-col font-mono text-xs text-[#A0AEC0]"
+                    >
+                        <div className="flex justify-between items-center mb-4 pb-4 border-b border-[#1E1E26] shrink-0">
                             <div>
                                 <h2 className="text-white font-bold tracking-widest text-sm font-mono">[ FILE SYSTEM ]</h2>
                                 <p className="text-[#64748B] text-xs font-mono mt-1">Structural Workspace Context & Vault Explorer</p>
@@ -331,7 +359,7 @@ export function WorkspaceLayout() {
                         </div>
 
                         {/* Search & Filter Bar Controls */}
-                        <div className="flex flex-col gap-3 mb-6 relative z-30">
+                        <div className="flex flex-col gap-3 mb-6 relative z-30 shrink-0">
                             <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
                                 {/* Search Input Bar */}
                                 <div className="flex items-center bg-[#15151C] border border-[#2A2A35] rounded-lg px-3 py-1.5 flex-1 max-w-md focus-within:border-[#00D2FF] transition-colors">
@@ -397,13 +425,17 @@ export function WorkspaceLayout() {
                             <AnimatePresence>
                                 {isFsFilterOpen && (
                                     <motion.div
+                                        onWheel={(e) => e.stopPropagation()}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                        onPointerDown={(e) => e.stopPropagation()}
+                                        onTouchStart={(e) => e.stopPropagation()}
                                         initial={{ opacity: 0, y: -8, scale: 0.98 }}
                                         animate={{ opacity: 1, y: 0, scale: 1 }}
                                         exit={{ opacity: 0, y: -8, scale: 0.98 }}
                                         transition={{ duration: 0.15 }}
-                                        className="w-full max-w-2xl bg-[#0B0B10] border border-[#2A2A35] rounded-xl shadow-[0_0_30px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col mt-2"
+                                        className="w-full max-w-2xl bg-[#0B0B10] border border-[#2A2A35] rounded-xl shadow-[0_0_30px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col mt-2 max-h-[60vh] shrink-0 pointer-events-auto"
                                     >
-                                        <div className="flex items-center justify-between border-b border-[#1E1E26] p-3 bg-[#13131A]">
+                                        <div className="flex items-center justify-between border-b border-[#1E1E26] p-3 bg-[#13131A] shrink-0">
                                             <div className="flex items-center gap-2">
                                                 <span className="text-xs font-mono font-bold tracking-wider text-purple-400">[ FILTER MATRIX SETTINGS ]</span>
                                                 {selectedExtensions.length > 0 && (
@@ -428,7 +460,7 @@ export function WorkspaceLayout() {
                                             </div>
                                         </div>
 
-                                        <div className="p-3 border-b border-[#1E1E26] bg-[#0E0E14]">
+                                        <div className="p-3 border-b border-[#1E1E26] bg-[#0E0E14] shrink-0">
                                             <input 
                                                 type="text" 
                                                 value={fsFilterSearchQuery} 
@@ -438,48 +470,72 @@ export function WorkspaceLayout() {
                                             />
                                         </div>
 
-                                        <div className="max-h-72 overflow-y-auto p-4 flex flex-col gap-3 scrollbar-thin">
+                                        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3.5 scrollbar-thin">
                                             {EXTENSION_MATRIX.filter(catData => {
                                                 if (!fsFilterSearchQuery) return true;
                                                 const query = fsFilterSearchQuery.toLowerCase();
                                                 return catData.cat.toLowerCase().includes(query) || catData.exts.some(e => e.toLowerCase().includes(query));
                                             }).map(catData => {
                                                 const query = fsFilterSearchQuery.toLowerCase();
-                                                const isExpanded = query.length > 0 && (catData.cat.toLowerCase().includes(query) || catData.exts.some(e => e.toLowerCase().includes(query)));
+                                                const isExpanded = query.length > 0 ? true : (expandedCats[catData.cat] ?? false);
                                                 const activeCountInCat = catData.exts.filter(e => selectedExtensions.includes(e)).length;
+                                                const allSelected = catData.exts.length > 0 && catData.exts.every(e => selectedExtensions.includes(e));
 
                                                 return (
-                                                    <details key={catData.cat} className="border border-white/5 rounded-lg overflow-hidden bg-[#121218]" open={isExpanded || false}>
-                                                        <summary className="bg-[#15151C] px-3 py-2 text-[11px] font-mono text-gray-300 cursor-pointer select-none outline-none hover:text-white hover:bg-white/5 flex justify-between items-center">
-                                                            <span className="font-bold">{catData.cat.toUpperCase()}</span>
-                                                            {activeCountInCat > 0 && (
-                                                                <span className="text-[10px] text-purple-400 font-bold bg-purple-900/30 px-2 py-0.5 rounded border border-purple-500/40">
-                                                                    {activeCountInCat} active
-                                                                </span>
-                                                            )}
-                                                        </summary>
-                                                        <div className="p-2.5 flex flex-wrap gap-1.5 bg-[#0B0B10]">
-                                                            {catData.exts.map(ext => {
-                                                                const isSelected = selectedExtensions.includes(ext);
-                                                                const isMatch = query.length > 0 && ext.toLowerCase().includes(query);
-                                                                return (
-                                                                    <button 
-                                                                        key={ext} 
-                                                                        onClick={() => toggleExtension(ext)}
-                                                                        className={`px-2.5 py-1 text-[10px] font-mono rounded border transition-all ${
-                                                                            isSelected 
-                                                                                ? 'bg-purple-900/40 border-purple-500 text-purple-200 shadow-[0_0_8px_rgba(168,85,247,0.4)] font-bold' 
-                                                                                : (isMatch 
-                                                                                    ? 'bg-purple-900/20 border-purple-500/50 text-white' 
-                                                                                    : 'bg-[#15151C] border-[#2A2A35] text-gray-400 hover:bg-[#1E1E26] hover:text-white')
-                                                                        }`}
-                                                                    >
-                                                                        {ext}
-                                                                    </button>
-                                                                );
-                                                            })}
+                                                    <div key={catData.cat} className="border border-[#2A2A35] rounded-lg overflow-hidden bg-[#121218] transition-all">
+                                                        <div 
+                                                            onClick={() => toggleCat(catData.cat)}
+                                                            className="bg-[#15151C] px-3.5 py-2.5 text-[11px] font-mono text-gray-200 cursor-pointer select-none hover:text-white hover:bg-[#1C1C24] flex justify-between items-center transition-colors border-b border-[#1E1E26]/60"
+                                                        >
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-[#00D2FF] font-bold text-xs">{isExpanded ? '[-]' : '[+]'}</span>
+                                                                <span className="font-bold tracking-wide">{catData.cat.toUpperCase()}</span>
+                                                                <span className="text-[10px] text-[#64748B]">({catData.exts.length})</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                {activeCountInCat > 0 && (
+                                                                    <span className="text-[10px] text-purple-300 font-bold bg-purple-900/40 px-2 py-0.5 rounded border border-purple-500/50">
+                                                                        {activeCountInCat} active
+                                                                    </span>
+                                                                )}
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        toggleAllInCategory(catData.exts);
+                                                                    }}
+                                                                    className="text-[10px] text-cyan-400 hover:text-cyan-200 bg-cyan-950/40 border border-cyan-500/30 px-2 py-0.5 rounded transition-colors"
+                                                                >
+                                                                    {allSelected ? '[Deselect All]' : '[Select All]'}
+                                                                </button>
+                                                            </div>
                                                         </div>
-                                                    </details>
+                                                        {isExpanded && (
+                                                            <div className="p-3 flex flex-wrap gap-2 bg-[#0B0B10]">
+                                                                {catData.exts.map(ext => {
+                                                                    const isSelected = selectedExtensions.includes(ext);
+                                                                    const isMatch = query.length > 0 && ext.toLowerCase().includes(query);
+                                                                    return (
+                                                                        <button 
+                                                                            key={ext} 
+                                                                            type="button"
+                                                                            onClick={() => toggleExtension(ext)}
+                                                                            className={`px-3 py-1.5 min-h-[28px] text-[10px] font-mono rounded border flex items-center gap-1.5 transition-all cursor-pointer ${
+                                                                                isSelected 
+                                                                                    ? 'bg-purple-900/50 border-purple-400 text-white shadow-[0_0_10px_rgba(168,85,247,0.5)] font-bold' 
+                                                                                    : (isMatch 
+                                                                                        ? 'bg-purple-900/20 border-purple-500/50 text-white' 
+                                                                                        : 'bg-[#15151C] border-[#2A2A35] text-gray-400 hover:bg-[#1E1E26] hover:text-white hover:border-[#3E3E4F]')
+                                                                            }`}
+                                                                        >
+                                                                            <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-purple-400 shadow-[0_0_6px_#c084fc]' : 'bg-[#2A2A35]'}`} />
+                                                                            <span>{ext}</span>
+                                                                        </button>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 );
                                             })}
                                         </div>
