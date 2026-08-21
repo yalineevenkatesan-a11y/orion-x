@@ -166,15 +166,10 @@ export function WorkspaceLayout() {
   const [isFsFilterOpen, setIsFsFilterOpen] = useState(false);
   const [selectedExtensions, setSelectedExtensions] = useState<string[]>([]);
   const [fsFilterSearchQuery, setFsFilterSearchQuery] = useState('');
-  const [expandedCats, setExpandedCats] = useState<Record<string, boolean>>({
-    'Documents': true,
-    'JavaScript / Web': true,
-    'Python': true,
-    'Images': true
-  });
+  const [collapsedCats, setCollapsedCats] = useState<Record<string, boolean>>({});
 
   const toggleCat = (catName: string) => {
-    setExpandedCats(prev => ({
+    setCollapsedCats(prev => ({
       ...prev,
       [catName]: !prev[catName]
     }));
@@ -477,7 +472,7 @@ export function WorkspaceLayout() {
                                                 return catData.cat.toLowerCase().includes(query) || catData.exts.some(e => e.toLowerCase().includes(query));
                                             }).map(catData => {
                                                 const query = fsFilterSearchQuery.toLowerCase();
-                                                const isExpanded = query.length > 0 ? true : (expandedCats[catData.cat] ?? false);
+                                                const isCollapsed = Boolean(collapsedCats[catData.cat]);
                                                 const activeCountInCat = catData.exts.filter(e => selectedExtensions.includes(e)).length;
                                                 const allSelected = catData.exts.length > 0 && catData.exts.every(e => selectedExtensions.includes(e));
 
@@ -485,12 +480,12 @@ export function WorkspaceLayout() {
                                                     <div key={catData.cat} className="border border-[#2A2A35] rounded-lg overflow-hidden bg-[#121218] transition-all">
                                                         <div 
                                                             onClick={() => toggleCat(catData.cat)}
-                                                            className="bg-[#15151C] px-3.5 py-2.5 text-[11px] font-mono text-gray-200 cursor-pointer select-none hover:text-white hover:bg-[#1C1C24] flex justify-between items-center transition-colors border-b border-[#1E1E26]/60"
+                                                            className="bg-[#15151C] px-3.5 py-2.5 text-xs font-mono text-gray-200 cursor-pointer select-none hover:text-white hover:bg-[#1C1C24] flex justify-between items-center transition-colors border-b border-[#1E1E26]/60"
                                                         >
                                                             <div className="flex items-center gap-2">
-                                                                <span className="text-[#00D2FF] font-bold text-xs">{isExpanded ? '[-]' : '[+]'}</span>
-                                                                <span className="font-bold tracking-wide">{catData.cat.toUpperCase()}</span>
-                                                                <span className="text-[10px] text-[#64748B]">({catData.exts.length})</span>
+                                                                <span className="text-[#00D2FF] font-bold text-xs">{isCollapsed ? '[+]' : '[-]'}</span>
+                                                                <span className="font-bold tracking-wide text-white text-xs">{catData.cat.toUpperCase()}</span>
+                                                                <span className="text-[10px] text-[#64748B]">({catData.exts.length} types)</span>
                                                             </div>
                                                             <div className="flex items-center gap-2">
                                                                 {activeCountInCat > 0 && (
@@ -504,13 +499,13 @@ export function WorkspaceLayout() {
                                                                         e.stopPropagation();
                                                                         toggleAllInCategory(catData.exts);
                                                                     }}
-                                                                    className="text-[10px] text-cyan-400 hover:text-cyan-200 bg-cyan-950/40 border border-cyan-500/30 px-2 py-0.5 rounded transition-colors"
+                                                                    className="text-[10px] text-cyan-400 hover:text-cyan-200 bg-cyan-950/40 border border-cyan-500/30 px-2.5 py-1 rounded transition-colors font-bold"
                                                                 >
                                                                     {allSelected ? '[Deselect All]' : '[Select All]'}
                                                                 </button>
                                                             </div>
                                                         </div>
-                                                        {isExpanded && (
+                                                        {!isCollapsed && (
                                                             <div className="p-3 flex flex-wrap gap-2 bg-[#0B0B10]">
                                                                 {catData.exts.map(ext => {
                                                                     const isSelected = selectedExtensions.includes(ext);
@@ -520,7 +515,7 @@ export function WorkspaceLayout() {
                                                                             key={ext} 
                                                                             type="button"
                                                                             onClick={() => toggleExtension(ext)}
-                                                                            className={`px-3 py-1.5 min-h-[28px] text-[10px] font-mono rounded border flex items-center gap-1.5 transition-all cursor-pointer ${
+                                                                            className={`px-2.5 py-1.5 min-h-[28px] text-xs font-mono rounded-md border flex items-center gap-1.5 transition-all cursor-pointer ${
                                                                                 isSelected 
                                                                                     ? 'bg-purple-900/50 border-purple-400 text-white shadow-[0_0_10px_rgba(168,85,247,0.5)] font-bold' 
                                                                                     : (isMatch 
