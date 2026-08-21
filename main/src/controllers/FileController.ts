@@ -138,7 +138,17 @@ export function initializeFileController(): void {
 
   ipcMain.handle('fs:readFile', async (event, filePath) => {
       const fsNode = require('fs');
+      const pathNode = require('path');
       try {
+          const ext = pathNode.extname(filePath).toLowerCase();
+          const imageExts = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'];
+          
+          if (imageExts.includes(ext)) {
+              const bitmap = fsNode.readFileSync(filePath);
+              const base64 = Buffer.from(bitmap).toString('base64');
+              const mimeType = ext === '.svg' ? 'svg+xml' : ext.replace('.', '');
+              return `data:image/${mimeType};base64,${base64}`;
+          }
           return fsNode.readFileSync(filePath, 'utf-8');
       } catch (e) {
           return "Error reading file stream.";

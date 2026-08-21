@@ -54,6 +54,9 @@ export function WorkspaceLayout() {
   const [showOptions, setShowOptions] = useState(false);
   const [activeView, setActiveView] = useState<string | null>(null);
   const [activeFile, setActiveFile] = useState<{name: string, content: string, path: string} | null>(null);
+  const [basicInfoOpen, setBasicInfoOpen] = useState(true);
+  const [codeInfoOpen, setCodeInfoOpen] = useState(false);
+  const [depsOpen, setDepsOpen] = useState(false);
 
   const handleFileClick = async (node: any) => {
       const content = await (window as any).electronAPI?.ipcRenderer?.invoke('fs:readFile', node.path);
@@ -229,24 +232,37 @@ export function WorkspaceLayout() {
         {activeView === 'file-viewer' && activeFile && (
             <div className="fixed inset-0 z-50 flex bg-[#0B0B10]">
                 {/* Left Panel (File Info) */}
-                <div className="w-[350px] border-r border-[#1E1E26] flex flex-col">
-                    <div className="p-4 border-b border-[#1E1E26] text-white font-bold text-sm tracking-widest">
-                        [ FILE INFORMATION PANEL ]
-                    </div>
-                    <div className="p-4 flex flex-col gap-4 text-xs font-mono text-[#A0AEC0]">
+                <div className="w-[350px] border-r border-[#1E1E26] flex flex-col h-full font-mono text-xs">
+                    <div className="p-4 border-b border-[#1E1E26] font-bold text-white">[ FILE INFORMATION PANEL ]</div>
+                    <div className="p-4 flex-1 overflow-y-auto flex flex-col gap-4">
+                        
+                        {/* BASIC INFO */}
                         <div>
-                            <div className="text-[#E2E8F0] mb-2 cursor-pointer">[-] BASIC INFORMATION</div>
-                            <div className="pl-4 flex flex-col gap-1">
-                                <div><span className="text-[#00D2FF]">Name:</span> {activeFile.name}</div>
-                                <div><span className="text-[#00D2FF]">Path:</span> {activeFile.path}</div>
-                                <div><span className="text-[#00D2FF]">Size:</span> {activeFile.content.length} Bytes</div>
+                            <div className="text-white font-bold cursor-pointer hover:text-[#00D2FF] select-none" onClick={() => setBasicInfoOpen(!basicInfoOpen)}>
+                                [{basicInfoOpen ? '-' : '+'}] BASIC INFORMATION
                             </div>
+                            {basicInfoOpen && (
+                                <div className="mt-2 pl-4 flex flex-col gap-2 text-[#A0AEC0]">
+                                    <div><span className="text-[#00D2FF]">Name:</span> {activeFile.name}</div>
+                                    <div className="break-all"><span className="text-[#00D2FF]">Path:</span> {activeFile.path}</div>
+                                </div>
+                            )}
                         </div>
+
+                        {/* CODE INFO */}
                         <div>
-                            <div className="text-[#E2E8F0] cursor-pointer">[+] CODE INFORMATION</div>
+                            <div className="text-white font-bold cursor-pointer hover:text-[#00D2FF] select-none" onClick={() => setCodeInfoOpen(!codeInfoOpen)}>
+                                [{codeInfoOpen ? '-' : '+'}] CODE INFORMATION
+                            </div>
+                            {codeInfoOpen && <div className="mt-2 pl-4 text-[#A0AEC0]">No code analysis available.</div>}
                         </div>
+
+                        {/* DEPENDENCIES */}
                         <div>
-                            <div className="text-[#E2E8F0] cursor-pointer">[+] DEPENDENCIES</div>
+                            <div className="text-white font-bold cursor-pointer hover:text-[#00D2FF] select-none" onClick={() => setDepsOpen(!depsOpen)}>
+                                [{depsOpen ? '-' : '+'}] DEPENDENCIES
+                            </div>
+                            {depsOpen && <div className="mt-2 pl-4 text-[#A0AEC0]">No dependencies found.</div>}
                         </div>
                     </div>
                 </div>
@@ -275,10 +291,16 @@ export function WorkspaceLayout() {
                             </button>
                         </div>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-6 min-w-0">
-                        <pre className="font-mono text-sm text-[#A0AEC0] overflow-hidden break-all whitespace-pre-wrap">
-                            {activeFile.content}
-                        </pre>
+                    <div className="flex-1 overflow-y-auto p-4 relative">
+                        {activeFile.content.startsWith('data:image/') ? (
+                            <div className="flex items-center justify-center h-full w-full">
+                                <img src={activeFile.content} alt={activeFile.name} className="max-w-full max-h-full object-contain drop-shadow-2xl rounded-md" />
+                            </div>
+                        ) : (
+                            <pre className="font-mono text-sm text-[#A0AEC0] overflow-hidden break-all whitespace-pre-wrap">
+                                {activeFile.content}
+                            </pre>
+                        )}
                     </div>
                 </div>
 
