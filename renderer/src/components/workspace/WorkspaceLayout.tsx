@@ -206,10 +206,37 @@ export function WorkspaceLayout() {
         <div className="flex flex-row flex-1 overflow-hidden w-full relative z-10">
             {/* LEFT SIDEBAR (MUST BE FIXED WIDTH & VISIBLE) */}
             <aside className="w-[280px] border-r border-[#1E1E26] flex flex-col justify-between bg-[#15151C] shrink-0 p-4 h-full pointer-events-auto z-20 relative">
-                <div className="flex flex-col gap-1 border border-[#2A2A35] rounded-md bg-[#0B0B10] overflow-hidden text-sm font-mono">
-                    <div onClick={() => setActiveView('files')} className={`px-4 py-3 font-bold cursor-pointer ${activeView === 'files' ? 'bg-[#2A2A35] text-white' : 'text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26]'}`}>[DIR] Files View</div>
-                    <div className="px-4 py-3 text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26] cursor-pointer">Global Search</div>
-                    <div onClick={() => setActiveView('chat')} className={`px-4 py-3 font-bold cursor-pointer ${activeView === 'chat' ? 'bg-[#2A2A35] text-white' : 'text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26]'}`}>Multi-Agent Chat Console</div>
+                <div className="flex flex-col gap-1 border border-[#2A2A35] rounded-md bg-[#0B0B10] overflow-hidden">
+                    <div 
+                        onClick={() => setActiveView('files')}
+                        className={`px-4 py-3 font-bold cursor-pointer transition-colors ${activeView === 'files' ? 'bg-[#2A2A35] text-white' : 'text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26]'}`}
+                    >
+                        [DIR] Files View
+                    </div>
+                    <div 
+                        onClick={() => setActiveView('search')}
+                        className={`px-4 py-3 cursor-pointer transition-colors ${activeView === 'search' ? 'bg-[#2A2A35] text-white font-bold' : 'text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26]'}`}
+                    >
+                        Global Search
+                    </div>
+                    <div 
+                        onClick={() => setActiveView('memory')}
+                        className={`px-4 py-3 cursor-pointer transition-colors ${activeView === 'memory' ? 'bg-[#2A2A35] text-white font-bold' : 'text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26]'}`}
+                    >
+                        Memory Context Tracker
+                    </div>
+                    <div 
+                        onClick={() => setActiveView('chat')}
+                        className={`px-4 py-3 cursor-pointer transition-colors ${activeView === 'chat' ? 'bg-[#2A2A35] text-white font-bold' : 'text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26]'}`}
+                    >
+                        Multi-Agent Chat Console
+                    </div>
+                    <div 
+                        onClick={() => setActiveView('settings')}
+                        className={`px-4 py-3 cursor-pointer transition-colors border-t border-[#2A2A35] ${activeView === 'settings' ? 'bg-[#2A2A35] text-white font-bold' : 'text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26]'}`}
+                    >
+                        System Settings
+                    </div>
                 </div>
             </aside>
 
