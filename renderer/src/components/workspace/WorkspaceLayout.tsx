@@ -214,62 +214,8 @@ export function WorkspaceLayout() {
         )}
 
         <div className="flex flex-row flex-1 overflow-hidden w-full h-full relative">
-            {/* LEFT SIDEBAR (RESTORED WITH TOOL SELECTOR & BEHAVIOR RADAR MONITOR) */}
-            <aside className="w-[300px] border-r border-[#1E1E26] flex flex-col justify-between bg-[#15151C] shrink-0 p-4 h-full z-10 select-none">
-                {/* Top: Tool Selector Menu */}
-                <div className="flex flex-col gap-1 border border-[#2A2A35] rounded-md bg-[#0B0B10] overflow-hidden text-xs font-mono">
-                    <div onClick={() => setActiveView('files')} className={`px-4 py-3 font-bold cursor-pointer ${activeView === 'files' ? 'bg-[#2A2A35] text-white' : 'text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26]'}`}>[DIR] Files View</div>
-                    <div onClick={() => setActiveView('search')} className={`px-4 py-3 font-bold cursor-pointer ${activeView === 'search' ? 'bg-[#2A2A35] text-white' : 'text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26]'}`}>Global Search</div>
-                    <div onClick={() => setActiveView('memory')} className={`px-4 py-3 font-bold cursor-pointer ${activeView === 'memory' ? 'bg-[#2A2A35] text-white' : 'text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26]'}`}>Memory Context Tracker</div>
-                    <div onClick={() => setActiveView('chat')} className={`px-4 py-3 font-bold cursor-pointer ${activeView === 'chat' ? 'bg-[#2A2A35] text-white' : 'text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26]'}`}>Multi-Agent Chat Console</div>
-                    <div className="px-4 py-3 font-bold text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26] cursor-pointer border-t border-[#2A2A35]">System Settings</div>
-                </div>
-
-                {/* Bottom: Behavior Monitor Card */}
-                <div className="flex flex-col items-center bg-[#0B0B10] border border-[#2A2A35] rounded-xl p-3 shadow-lg mt-auto">
-                    <div className="mb-2 bg-[#15151C] border border-[#2A2A35] rounded-full px-3 py-1 font-mono text-[10px] text-[#00D2FF] tracking-wider text-center select-none w-full flex justify-center items-center gap-1">
-                        <span>BEHAVIOR:</span>
-                        <span className="text-purple-400 font-bold">HUGGING_TEDDY</span>
-                    </div>
-                    
-                    {/* Circular Nested Radar Graphic */}
-                    <div className="w-48 h-48 relative flex items-center justify-center bg-[#07070A] rounded-xl border border-[#1E1E26] overflow-hidden">
-                        <svg className="w-full h-full absolute inset-0 text-[#2A2A35]" viewBox="0 0 200 200">
-                            {/* Concentric rings */}
-                            <circle cx="100" cy="100" r="85" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="3 3" opacity="0.4" />
-                            <circle cx="100" cy="100" r="65" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="2 2" opacity="0.6" />
-                            <circle cx="100" cy="100" r="45" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.7" />
-                            <circle cx="100" cy="100" r="25" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.8" />
-                            <circle cx="100" cy="100" r="6" fill="#00D2FF" opacity="0.9" />
-
-                            {/* Crosshairs */}
-                            <line x1="15" y1="100" x2="185" y2="100" stroke="currentColor" strokeWidth="1" strokeDasharray="2 2" opacity="0.5" />
-                            <line x1="100" y1="15" x2="100" y2="185" stroke="currentColor" strokeWidth="1" strokeDasharray="2 2" opacity="0.5" />
-
-                            {/* Radar sweep beam animation */}
-                            <circle cx="100" cy="100" r="75" fill="url(#radarGradient)" opacity="0.25" className="animate-spin" style={{ transformOrigin: '100px 100px', animationDuration: '6s' }} />
-
-                            {/* Blips / Neural Nodes */}
-                            <circle cx="130" cy="70" r="3" fill="#A855F7" className="animate-ping" style={{ animationDuration: '3s' }} />
-                            <circle cx="130" cy="70" r="2.5" fill="#C084FC" />
-                            <circle cx="75" cy="125" r="2.5" fill="#00D2FF" />
-                            <circle cx="120" cy="140" r="2" fill="#22C55E" />
-
-                            <defs>
-                                <radialGradient id="radarGradient" cx="50%" cy="50%" r="50%">
-                                    <stop offset="0%" stopColor="#00D2FF" stopOpacity="0.8" />
-                                    <stop offset="60%" stopColor="#A855F7" stopOpacity="0.3" />
-                                    <stop offset="100%" stopColor="transparent" stopOpacity="0" />
-                                </radialGradient>
-                            </defs>
-                        </svg>
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-purple-600/30 to-cyan-400/30 blur-md animate-pulse pointer-events-none" />
-                    </div>
-                </div>
-            </aside>
-
-            {/* INTERACTIVE CORE WORKSPACE */}
-            <main className="flex-1 flex flex-col bg-[#0B0B10] h-full relative overflow-hidden">
+            {/* INTERACTIVE CORE WORKSPACE (FULL SCREEN) */}
+            <main className="w-full h-full flex-1 flex flex-col bg-[#050508] relative overflow-hidden">
                 {/* 3D GRAPH AREA (Underneath) */}
                 <div className="absolute inset-0 z-0 w-full h-full">
                     {/* The 3D nodes render here */}
@@ -278,28 +224,15 @@ export function WorkspaceLayout() {
 
                 {/* FILE SYSTEM OVERLAY */}
                 {activeView === 'files' && (
-                    <div className="absolute inset-0 z-50 bg-[#0B0B10] p-8 overflow-y-auto flex flex-col font-mono text-xs text-[#A0AEC0]">
-                        <div className="mb-6 w-full">
-                            <div className="flex flex-row items-center justify-between w-full mb-2">
-                                <div className="flex items-center gap-6">
-                                    <h2 className="text-white font-bold tracking-widest text-lg whitespace-nowrap">[ FILE SYSTEM ]</h2>
-                                    <div className="flex flex-row items-center border border-[#2A2A35] rounded-full px-4 py-1.5 text-xs text-[#A0AEC0] bg-[#0B0B10]">
-                                        <span className="font-bold text-white mr-4 hover:text-[#00D2FF] cursor-pointer whitespace-nowrap">[F] GRAPH FILTERS</span>
-                                        <span className="font-bold text-white mr-4 border-l border-[#2A2A35] pl-4 hover:text-[#00D2FF] cursor-pointer whitespace-nowrap">[O] OPTIONS</span>
-                                        <span className="border-l border-[#2A2A35] pl-4 flex flex-row items-center min-w-[300px]">
-                                            <span className="mr-3 text-[#A0AEC0] whitespace-nowrap">[SEARCH]</span>
-                                            <input type="text" placeholder="Search nodes, paths, risk:high..." className="bg-transparent outline-none w-full text-[#A0AEC0] placeholder-[#2A2A35]" />
-                                        </span>
-                                    </div>
-                                </div>
-                                <button onClick={() => setActiveView(null)} className="text-xs font-bold text-[#A0AEC0] hover:text-white font-mono tracking-widest uppercase px-4 whitespace-nowrap">
-                                    CLOSE [x]
-                                </button>
+                    <div className="absolute inset-0 z-50 bg-[#0B0B10] pl-[25%] pr-8 py-8 overflow-y-auto flex flex-col font-mono text-xs text-[#A0AEC0]">
+                        <div className="flex justify-between items-center mb-6 pb-4 border-b border-[#1E1E26]">
+                            <div>
+                                <h2 className="text-white font-bold tracking-widest text-sm font-mono">[ FILE SYSTEM ]</h2>
+                                <p className="text-[#64748B] text-xs font-mono mt-1">Structural Workspace Context & Vault Explorer</p>
                             </div>
-                            <p className="text-[#64748B] text-xs font-mono mt-2 mb-4">Structural Workspace Context</p>
-                            <hr className="border-[#1E1E26] w-full" />
+                            <button onClick={() => setActiveView(null)} className="text-xs font-bold text-[#A0AEC0] hover:text-white font-mono tracking-widest uppercase">CLOSE [x]</button>
                         </div>
-                        <div className="font-mono text-xs leading-tight mt-4 flex-1 overflow-y-auto pl-2">
+                        <div className="flex-1 overflow-y-auto font-mono text-xs">
                             {fileTree ? <FileTreeNode node={fileTree} onFileSelect={handleFileClick}/> : <div className="text-[#A0AEC0]">SCANNING NEURAL DIRECTORY...</div>}
                         </div>
                     </div>
