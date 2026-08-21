@@ -92,308 +92,110 @@ export function WorkspaceLayout() {
   const isActive = bootState === 'active';
 
   return (
-    <>
-    <div 
-      className="relative flex overflow-hidden bg-[#0B0B10] font-sans"
-      style={{ width: '100vw', height: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'row' }}
-    >
+    <div className="flex flex-col h-screen w-screen bg-[#0B0B10] text-[#A0AEC0] font-mono overflow-hidden select-none">
       
-      {/* Background Neural Nodes canvas */}
-      <NeuralNodes isInitialized={isActive} />
-
-      {/* 1. Initialization Loading Screen (Active during the 2000ms boot) */}
-      {bootState === 'initializing' && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center z-20 pointer-events-none">
-          <div className="flex flex-col items-center gap-3">
-            <span className="text-sm font-mono tracking-[0.4em] text-cyber-400 animate-pulse">
-              INITIALIZING CORE...
-            </span>
-            <div className="w-48 h-1 bg-white/5 rounded-full overflow-hidden border border-white/5">
-              <div className="h-full bg-gradient-to-r from-quantum-500 to-cyber-500 rounded-full animate-loading-bar" />
-            </div>
+      {/* 1. THE GLOBAL HEADER (Top Edge) */}
+      <header className="h-16 border-b border-[#1E1E26] flex flex-row items-center justify-between px-6 shrink-0 bg-[#0B0B10] z-50">
+          <div className="flex items-center gap-4">
+              <button className="px-4 py-1.5 border border-[#2A2A35] rounded hover:bg-[#1E1E26] text-xs">OPTIONS</button>
+              <button className="px-4 py-1.5 border border-[#2A2A35] rounded hover:bg-[#1E1E26] text-xs">SWITCH VAULT</button>
+              <button className="px-4 py-1.5 border border-[#2A2A35] rounded hover:bg-[#1E1E26] text-xs">&lt; BACK</button>
           </div>
-        </div>
-      )}
-
-      {/* 2. Main Workspace Layout Grid */}
-      <div className="relative z-10 flex flex-col w-full h-full">
-        
-        {/* Global Application Header */}
-        <header className="flex items-center justify-between px-8 py-5 border-b border-white/5 bg-[#0B0B10] z-30 select-none shrink-0" style={{ WebkitAppRegion: 'drag' } as any}>
-          <div className="flex items-center gap-6" style={{ WebkitAppRegion: 'no-drag' } as any}>
-            {/* Title moved to absolute container */}
+          <div className="flex flex-col items-center">
+              <h1 className="text-white font-bold tracking-widest text-sm">ORION-X Neural Core</h1>
+              <span className="text-[#00D2FF] text-[10px] uppercase tracking-widest">ACTIVE PIPELINE CONTEXT</span>
           </div>
-          <div className="flex items-center gap-4" style={{ WebkitAppRegion: 'no-drag' } as any}>
-            <div className="flex items-center gap-2 mr-4">
-              <span className="w-2 h-2 rounded-full bg-cyber-500 animate-pulse" />
-              <span className="text-xs text-gray-400 font-mono">NODE CONNECTED</span>
-            </div>
-            
-            {/* Frame Control Widgets */}
-            <div className="flex items-center gap-2 border-l border-white/10 pl-4" style={{ WebkitAppRegion: 'no-drag' } as any}>
-              <button 
-                onClick={() => (window as any).electronAPI?.ipcRenderer?.send('window-control', 'minimize')}
-                className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 text-gray-400 hover:text-white transition-colors"
-                title="Minimize"
-              >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 12H4" /></svg>
-              </button>
-              <button 
-                onClick={() => (window as any).electronAPI?.ipcRenderer?.send('window-control', 'maximize')}
-                className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 text-gray-400 hover:text-white transition-colors"
-                title="Maximize/Restore"
-              >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" ry="2" strokeWidth="2" /></svg>
-              </button>
-              <button 
-                onClick={() => (window as any).electronAPI?.ipcRenderer?.send('window-control', 'close')}
-                className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-red-500/20 border border-white/5 text-gray-400 hover:text-red-400 transition-colors"
-                title="Close"
-              >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
+          <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2 text-xs">
+                  <div className="w-2 h-2 rounded-full bg-[#00D2FF]"></div>
+                  <span>NODE CONNECTED</span>
+              </div>
+              <div className="flex items-center gap-2">
+                  <button className="w-8 h-8 flex items-center justify-center border border-[#2A2A35] rounded hover:bg-[#1E1E26]">-</button>
+                  <button className="w-8 h-8 flex items-center justify-center border border-[#2A2A35] rounded hover:bg-[#1E1E26]">□</button>
+                  <button className="w-8 h-8 flex items-center justify-center border border-[#2A2A35] rounded hover:bg-[#1E1E26]">×</button>
+              </div>
           </div>
-        </header>
-
-        {/* Restored Layout Elements */}
-        
-        {/* Top-Left Control Cluster */}
-        <div className="absolute top-6 left-6 z-50 flex flex-row items-center gap-8 pointer-events-auto" style={{ WebkitAppRegion: 'no-drag' } as any}>
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <button 
-                onClick={() => setShowOptions((prev) => !prev)}
-                className="px-4 py-2 bg-[#0B0B10] border border-[#1E1E26] outline-none focus:outline-none text-xs font-bold text-[#E2E8F0] uppercase tracking-widest hover:border-[#00D2FF]"
-              >
-                OPTIONS
-              </button>
-            </div>
-            <button className="px-4 py-2 bg-[#0B0B10] border border-[#1E1E26] outline-none focus:outline-none text-xs font-bold text-[#E2E8F0] uppercase tracking-widest hover:border-[#00D2FF]">SWITCH VAULT</button>
-            <button onClick={() => window.dispatchEvent(new CustomEvent('orion:reset-zoom'))} className="px-4 py-2 bg-[#0B0B10] border border-[#1E1E26] outline-none focus:outline-none text-xs font-bold text-[#E2E8F0] uppercase tracking-widest hover:border-[#00D2FF]">&lt; BACK</button>
-          </div>
-
-          <div className="flex flex-col">
-            <h2 className="text-sm font-semibold text-white tracking-wide">
-              ORION-X Neural Core
-            </h2>
-            <span className="text-[10px] text-cyber-500 font-mono tracking-wider">
-              ACTIVE PIPELINE CONTEXT
-            </span>
-          </div>
-        </div>
-
-        {showOptions && (
-            <div className="absolute top-20 left-6 w-64 bg-[#15151C] border border-[#2A2A35] rounded-md z-50 overflow-hidden flex flex-col font-mono text-sm shadow-2xl">
-                <div 
-                    onClick={() => { setActiveView('files'); setShowOptions(false); }}
-                    className="px-4 py-3 bg-[#2A2A35] text-white cursor-pointer"
-                >
-                    [DIR] Files View
-                </div>
-                <div className="px-4 py-3 text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26] cursor-pointer">Global Search</div>
-                <div className="px-4 py-3 text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26] cursor-pointer">Memory Context Tracker</div>
-                <div className="px-4 py-3 text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26] cursor-pointer">Multi-Agent Chat Console</div>
-                <div className="px-4 py-3 text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26] cursor-pointer border-t border-[#2A2A35]">System Settings</div>
-            </div>
-        )}
-
-        {activeView === 'files' && (
-            <div className="fixed top-[80px] left-[260px] right-0 bottom-0 bg-[#0B0B10] z-[100] p-8 overflow-y-auto border-l border-t border-[#1E1E26]">
-                
-                <div className="flex flex-row items-center justify-between w-full mb-6">
-                    <div className="flex flex-row items-center gap-6">
-                        <h2 className="text-white font-bold tracking-widest text-xl whitespace-nowrap">[ FILE SYSTEM ]</h2>
-                        
-                        <div className="flex flex-row items-center border border-[#2A2A35] rounded-full px-4 py-1.5 text-xs text-[#A0AEC0] bg-[#0B0B10]">
-                            <span className="font-bold text-white mr-4 hover:text-[#00D2FF] cursor-pointer whitespace-nowrap px-2">[F] GRAPH FILTERS</span>
-                            <span className="font-bold text-white mr-4 border-l border-[#2A2A35] pl-4 hover:text-[#00D2FF] cursor-pointer whitespace-nowrap">[O] OPTIONS</span>
-                            <span className="border-l border-[#2A2A35] pl-4 flex flex-row items-center min-w-[250px]">
-                                <span className="mr-3 text-white font-bold whitespace-nowrap">[SEARCH]</span>
-                                <input type="text" placeholder="Search nodes, paths, risk:high..." className="bg-transparent outline-none w-full text-[#A0AEC0] placeholder-[#64748B]" />
-                            </span>
-                        </div>
-                    </div>
-                    
-                    <button onClick={() => setActiveView(null)} className="text-[#A0AEC0] hover:text-white font-bold text-sm px-4 whitespace-nowrap">
-                        CLOSE [x]
-                    </button>
-                </div>
-                
-                <hr className="border-[#1E1E26] w-full mb-6" />
-                
-                <div className="font-mono text-sm leading-tight">
-                    {fileTree ? <FileTreeNode node={fileTree} onFileSelect={handleFileClick} /> : <div className="text-[#A0AEC0]">SCANNING NEURAL DIRECTORY...</div>}
-                </div>
-                
-            </div>
-        )}
-
-        {activeView === 'file-viewer' && activeFile && (
-            <div className="fixed inset-0 z-50 flex bg-[#0B0B10]">
-                {/* Left Panel (File Info) */}
-                <div className="w-[350px] border-r border-[#1E1E26] flex flex-col h-full font-mono text-xs">
-                    <div className="p-4 border-b border-[#1E1E26] font-bold text-white">[ FILE INFORMATION PANEL ]</div>
-                    <div className="p-4 flex-1 overflow-y-auto flex flex-col gap-4">
-                        
-                        {/* BASIC INFO */}
-                        <div>
-                            <div className="text-white font-bold cursor-pointer hover:text-[#00D2FF] select-none" onClick={() => setBasicInfoOpen(!basicInfoOpen)}>
-                                [{basicInfoOpen ? '-' : '+'}] BASIC INFORMATION
-                            </div>
-                            {basicInfoOpen && (
-                                <div className="mt-2 pl-4 flex flex-col gap-2 text-[#A0AEC0]">
-                                    <div><span className="text-[#00D2FF]">Name:</span> {activeFile.name}</div>
-                                    <div className="break-all"><span className="text-[#00D2FF]">Path:</span> {activeFile.path}</div>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* CODE INFO */}
-                        <div>
-                            <div className="text-white font-bold cursor-pointer hover:text-[#00D2FF] select-none" onClick={() => setCodeInfoOpen(!codeInfoOpen)}>
-                                [{codeInfoOpen ? '-' : '+'}] CODE INFORMATION
-                            </div>
-                            {codeInfoOpen && <div className="mt-2 pl-4 text-[#A0AEC0]">No code analysis available.</div>}
-                        </div>
-
-                        {/* DEPENDENCIES */}
-                        <div>
-                            <div className="text-white font-bold cursor-pointer hover:text-[#00D2FF] select-none" onClick={() => setDepsOpen(!depsOpen)}>
-                                [{depsOpen ? '-' : '+'}] DEPENDENCIES
-                            </div>
-                            {depsOpen && <div className="mt-2 pl-4 text-[#A0AEC0]">No dependencies found.</div>}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Center Panel (Code View) */}
-                <div className="flex-1 flex flex-col bg-[#0B0B10] min-w-0">
-                    <div className="h-14 border-b border-[#1E1E26] flex items-center px-4 gap-6 text-xs font-bold text-[#E2E8F0] justify-between">
-                        <div className="cursor-pointer hover:text-[#00D2FF] whitespace-nowrap">[G] GRAPH VIEW</div>
-                        <div className="cursor-pointer hover:text-[#00D2FF] whitespace-nowrap">[F] GRAPH FILTERS</div>
-                        <div className="cursor-pointer hover:text-[#00D2FF] whitespace-nowrap">[O] OPTIONS</div>
-                        <div className="w-64 border border-[#1E1E26] rounded px-3 py-1 bg-[#15151C] text-[#A0AEC0] whitespace-nowrap hidden lg:block">
-                            [SEARCH] Search nodes, paths, risk:high...
-                        </div>
-                        <div className="flex flex-row items-center gap-4 ml-auto pr-8">
-                            <button 
-                                onClick={() => setActiveView('files')} 
-                                className="text-[#A0AEC0] hover:text-[#00D2FF] font-bold text-xs whitespace-nowrap border border-[#2A2A35] bg-[#0B0B10] px-4 py-1.5 rounded-full"
-                            >
-                                [ &lt; BACK TO TREE ]
-                            </button>
-                            <button 
-                                onClick={() => { setActiveView(null); setActiveFile(null); }} 
-                                className="text-[#A0AEC0] hover:text-white font-bold text-sm px-4 whitespace-nowrap"
-                            >
-                                CLOSE [x]
-                            </button>
-                        </div>
-                    </div>
-                    <div className="flex-1 overflow-y-auto p-4 relative">
-                        {activeFile.content.startsWith('data:image/') ? (
-                            <div className="flex items-center justify-center h-full w-full">
-                                <img src={activeFile.content} alt={activeFile.name} className="max-w-full max-h-full object-contain drop-shadow-2xl rounded-md" />
-                            </div>
-                        ) : (
-                            <pre className="font-mono text-sm text-[#A0AEC0] overflow-hidden break-all whitespace-pre-wrap">
-                                {activeFile.content}
-                            </pre>
-                        )}
-                    </div>
-                </div>
-
-                {/* Right Panel (AI Stream) */}
-                <div className="w-[300px] border-l border-[#1E1E26] flex flex-col bg-[#0B0B10]">
-                    <div className="h-14 border-b border-[#1E1E26] flex items-center justify-end px-4">
-                        <button 
-                            onClick={() => setActiveView('files')}
-                            className="text-xs font-bold text-[#E2E8F0] border border-[#1E1E26] px-3 py-1 hover:border-[#00D2FF]"
-                        >
-                            [ &lt; BACK TO TREE ]
-                        </button>
-                    </div>
-                    <div className="flex-1 flex flex-col items-center justify-center text-[#A0AEC0] text-xs font-mono gap-4">
-                        <div className="w-8 h-8 border-t-2 border-[#00D2FF] border-solid rounded-full animate-spin"></div>
-                        <div>LOADING FILE STREAM...</div>
-                    </div>
-                </div>
-            </div>
-        )}
-        {/* Absolute 3D Canvas */}
-        <div className="absolute inset-0 z-0 w-screen h-screen">
-          <NeuralGraphDashboard />
-        </div>
+      </header>
+  
+      {/* MIDDLE SECTION: SIDEBAR + WORKSPACE */}
+      <div className="flex flex-1 overflow-hidden">
+          
+          {/* 2 & 3. LEFT SIDEBAR (Nav Panel + Behavior Monitor) */}
+          <aside className="w-[280px] border-r border-[#1E1E26] flex flex-col justify-between bg-[#15151C] shrink-0 p-4">
+              {/* Tool Selector */}
+              <div className="flex flex-col gap-1 border border-[#2A2A35] rounded-md bg-[#0B0B10] overflow-hidden">
+                  <div className="px-4 py-3 bg-[#2A2A35] text-white font-bold cursor-pointer">[DIR] Files View</div>
+                  <div className="px-4 py-3 hover:text-white hover:bg-[#1E1E26] cursor-pointer">Global Search</div>
+                  <div className="px-4 py-3 hover:text-white hover:bg-[#1E1E26] cursor-pointer">Memory Context Tracker</div>
+                  <div className="px-4 py-3 hover:text-white hover:bg-[#1E1E26] cursor-pointer">Multi-Agent Chat Console</div>
+                  <div className="px-4 py-3 hover:text-white hover:bg-[#1E1E26] cursor-pointer border-t border-[#2A2A35]">System Settings</div>
+              </div>
+  
+              {/* Behavior Monitor */}
+              <div className="mt-auto flex flex-col items-center">
+                  <div className="border border-[#2A2A35] rounded-full px-3 py-1 mb-2 bg-[#0B0B10] text-[10px]">
+                      <span className="text-[#00D2FF]">BEHAVIOR:</span> <span className="text-[#D946EF]">HUGGING_TEDDY</span>
+                  </div>
+                  <div className="w-[240px] h-[240px] border border-[#2A2A35] rounded-xl bg-[#0B0B10] flex items-center justify-center overflow-hidden">
+                      {/* Simulated Radar Circles */}
+                      <div className="w-48 h-48 border border-[#311746] rounded-full flex items-center justify-center">
+                          <div className="w-40 h-40 border-2 border-[#582A7C] rounded-full flex items-center justify-center">
+                              <div className="w-32 h-32 bg-[#170A21] rounded-full"></div>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </aside>
+  
+          {/* 4. INTERACTIVE CORE WORKSPACE */}
+          <main className="flex-1 flex flex-col p-8 overflow-y-auto bg-[#0B0B10] relative">
+              {/* The File System View goes here */}
+              {activeView === 'files' && (
+                  <div className="w-full max-w-5xl">
+                      <div className="mb-6">
+                          <div className="flex flex-row items-center gap-6 mb-2">
+                              <h2 className="text-white font-bold tracking-widest text-lg whitespace-nowrap">[ FILE SYSTEM ]</h2>
+                              <div className="flex flex-row items-center border border-[#2A2A35] rounded-full px-4 py-1.5 text-xs text-[#A0AEC0] bg-[#0B0B10]">
+                                  <span className="font-bold text-white mr-4 hover:text-[#00D2FF] cursor-pointer whitespace-nowrap">[F] GRAPH FILTERS</span>
+                                  <span className="font-bold text-white mr-4 border-l border-[#2A2A35] pl-4 hover:text-[#00D2FF] cursor-pointer whitespace-nowrap">[O] OPTIONS</span>
+                                  <span className="border-l border-[#2A2A35] pl-4 flex flex-row items-center min-w-[300px]">
+                                      <span className="mr-3 text-[#A0AEC0] whitespace-nowrap">[SEARCH]</span>
+                                      <input type="text" placeholder="Search nodes, paths, risk:high..." className="bg-transparent outline-none w-full text-[#A0AEC0] placeholder-[#2A2A35]" />
+                                  </span>
+                              </div>
+                          </div>
+                          <p className="text-[#64748B] text-xs font-mono mt-2 mb-4">Structural Workspace Context</p>
+                          <hr className="border-[#1E1E26] w-full" />
+                      </div>
+                      
+                      {/* Dynamic File Tree Injection */}
+                      <div className="font-mono text-sm leading-tight mt-6">
+                          {fileTree ? <FileTreeNode node={fileTree} onFileSelect={handleFileClick} /> : <div className="text-[#A0AEC0]">SCANNING NEURAL DIRECTORY...</div>}
+                      </div>
+                  </div>
+              )}
+          </main>
       </div>
-
-          <style jsx global>{`
-            @keyframes loadingBar {
-              0% { width: 0%; transform: translateX(0%); }
-              50% { width: 70%; }
-              100% { width: 100%; }
-            }
-            .animate-loading-bar { animation: loadingBar 2s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
-          `}</style>
-        </div>
-
-        {/* Spark Orb Trigger */}
-        <button 
-          onClick={() => setIsAssistantOpen(!isAssistantOpen)}
-          className="group absolute bottom-8 right-8 z-[100] flex items-center justify-center transition-all duration-300"
-          style={{
-            width: '3.5rem', height: '3.5rem',
-            borderRadius: '50%', background: 'radial-gradient(circle at 30% 30%, #a855f7, #6366f1 60%, #ec4899)',
-            border: 'none', cursor: 'pointer', boxShadow: '0 0 15px rgba(139, 92, 246, 0.4)'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'scale(1.1)';
-            e.currentTarget.style.boxShadow = '0 0 25px rgba(236, 72, 153, 0.8), inset 0 0 10px rgba(255, 255, 255, 0.4)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'scale(1)';
-            e.currentTarget.style.boxShadow = '0 0 15px rgba(139, 92, 246, 0.4)';
-          }}
-          title="Spark AI Core"
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-white drop-shadow-md">
-            <path d="M10 2L12 8L18 10L12 12L10 18L8 12L2 10L8 8L10 2Z" fill="currentColor"/>
-            <path d="M19 14L20 17L23 18L20 19L19 22L18 19L15 18L18 17L19 14Z" fill="currentColor"/>
-            <path d="M6 18L6.5 20L8.5 20.5L6.5 21L6 23L5.5 21L3.5 20.5L5.5 20L6 18Z" fill="currentColor"/>
-          </svg>
-        </button>
-
-        {/* SVG Wire Layer */}
-        {selectedNode && isAssistantOpen && (
-          <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 90 }}>
-            <path 
-              d={`M ${windowSize.width * 0.5} ${windowSize.height * 0.5} C ${windowSize.width * 0.7} ${windowSize.height * 0.5}, ${windowSize.width - 360} ${windowSize.height - 300}, ${windowSize.width - 360} ${windowSize.height - 100}`}
-              stroke="#06b6d4" strokeWidth="2" strokeDasharray="4 4" fill="transparent" opacity="0.6"
-            />
-          </svg>
-        )}
-
-      {/* Code View Modal */}
-      <AnimatePresence>
-        {isCodeModalOpen && selectedNode && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] flex flex-col bg-[#0B0B10] p-12"
-          >
-            <div className="flex justify-between items-center mb-4">
-              <span className="text-cyan-400 font-mono text-sm tracking-widest uppercase">RAW FILE STREAM: {selectedNode.label}</span>
-              <button onClick={() => setCodeModalOpen(false)} className="text-gray-400 hover:text-white font-mono text-xs uppercase tracking-widest bg-white/5 border border-white/10 px-4 py-2 hover:bg-red-500/20 hover:text-red-400 transition-colors">
-                [CLOSE STREAM]
-              </button>
-            </div>
-            <pre className="flex-1 overflow-auto bg-[#0B0B10] border border-white/10 p-6 font-mono text-[12px] text-gray-300 shadow-2xl rounded-sm selection:bg-cyan-900 selection:text-white">
-              <code>{selectedNode.fileContent || '// No source data available'}</code>
-            </pre>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
+  
+      {/* 5. THE APPLICATION FOOTER */}
+      <footer className="h-8 border-t border-[#1E1E26] bg-[#050508] flex flex-row items-center justify-center gap-8 text-[10px] shrink-0 font-bold z-50">
+          <div className="flex items-center gap-4">
+              <span>NODES: <span className="text-white">19</span> / 19</span>
+              <span>EDGES: <span className="text-white">18</span> / 18</span>
+          </div>
+          <div className="w-px h-4 bg-[#2A2A35]"></div>
+          <div className="flex items-center gap-4">
+              <span className="text-[#22C55E]">[OK] 19</span>
+              <span className="text-[#EAB308]">[WARN] 0</span>
+              <span className="text-[#EF4444]">[CRIT] 0</span>
+          </div>
+      </footer>
+  
+      {/* FLOATING ACTION BUTTON */}
+      <div className="absolute bottom-12 right-8 w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center cursor-pointer hover:scale-105 transition-transform shadow-[0_0_20px_rgba(139,92,246,0.5)] z-[100]">
+          <span className="text-white text-xl">✨</span>
+      </div>
+    </div>
   );
 }
