@@ -1077,178 +1077,12 @@ function NeuralGraphDashboardInner() {
                setSelectedNode(contextMenu.node); setSelectedNodeId(contextMenu.node.id); setActiveFileNode(contextMenu.node);
                const prompt = `Identify immediately vulnerable dependencies if I refactor the code inside this node. What breaks if I change this?`;
                window.dispatchEvent(new CustomEvent('ai:trigger-prompt', { detail: { prompt } }));
-               setContextMenu(null);
+              setContextMenu(null);
             }}>
               What breaks if I change this?
             </button>
           </motion.div>
         )}
-      </AnimatePresence>
-
-      {/* LEFT-SIDE FILE INFO PANEL */}
-      <AnimatePresence>
-      {activeFileNode && !isGraphFullScreen && (
-        <motion.div 
-          initial={{ x: -500, opacity: 0 }}
-          animate={{ x: 0, opacity: 1, width: isLeftPanelMinimized ? 16 : 420 }}
-          exit={{ x: -500, opacity: 0 }}
-          transition={{ type: 'spring', damping: 25, stiffness: 120 }}
-          className={`absolute left-0 top-0 h-full bg-[#0B0B10] border-r border-[#1E1E26] flex flex-col z-50 pointer-events-auto shadow-2xl overflow-visible ${isLeftPanelMinimized ? 'w-4' : 'w-[420px]'}`}
-        >
-          {/* ULTRA-SLIM FLUSH TOGGLE BAR */}
-          <button
-            onClick={() => setIsLeftPanelMinimized(!isLeftPanelMinimized)}
-            className="absolute right-0 top-0 w-4 h-full bg-transparent hover:bg-white/5 border-l border-transparent hover:border-white/10 z-[60] flex flex-col items-center justify-center text-zinc-500 hover:text-white transition-colors cursor-pointer"
-          >
-            <span className="font-mono text-[10px] font-bold tracking-widest">{isLeftPanelMinimized ? '»' : '«'}</span>
-          </button>
-
-          <AnimatePresence>
-            {!isLeftPanelMinimized && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex flex-col h-full w-[420px] overflow-hidden"
-              >
-                {/* HEADER */}
-                <div className="flex items-center justify-between p-4 border-b border-[#1E1E26] bg-[#0F0F16]">
-                  <span className="text-xs font-mono font-bold tracking-wider text-purple-400 truncate">[ FILE INFORMATION PANEL ]</span>
-                  <button onClick={() => { setSelectedNodeId(null); setSelectedNode(null); setActiveFileNode(null); setIsLeftPanelMinimized(false); }} className="text-zinc-500 hover:text-red-400 font-mono text-xs px-1.5 py-0.5 border border-zinc-800 rounded bg-zinc-900 transition-colors">[x]</button>
-                </div>
-
-                {/* ACCORDION SCROLL AREA */}
-                <div className="flex-1 overflow-y-auto pr-1 max-h-[calc(100vh-280px)] custom-scrollbar">
-                  <div className="p-4 flex flex-col gap-y-4">
-                  
-                  {/* BASIC INFO */}
-                  <div className="flex flex-col border border-zinc-800 rounded bg-[#13131A] overflow-hidden">
-                    <div className="px-3 py-2 bg-zinc-900 text-xs font-mono font-bold text-zinc-300 border-b border-zinc-800">
-                      [-] BASIC INFORMATION
-                    </div>
-                    <div className="p-3 flex flex-col">
-                      <InfoRow label="File Name" value={activeFileNode?.name || activeFileNode?.label} />
-                      <InfoRow label="Full Path" value={activeFileNode?.path || activeFileNode?.relativePath} />
-                      <InfoRow label="Extension" value={activeFileNode?.extension} />
-                      <InfoRow label="File Type" value={activeFileNode?.type?.toUpperCase()} />
-                      <InfoRow label="File Size" value={activeFileNode?.size ? `${(activeFileNode.size / 1024).toFixed(2)} KB` : ''} />
-                      <InfoRow label="Created" value="10 Aug 2026" />
-                      <InfoRow label="Last Modified" value={activeFileNode?.git?.lastModified || "10 Aug 2026, 12:20 PM"} />
-                      <InfoRow label="Last Author" value={activeFileNode?.git?.author || "Local User"} />
-                      <InfoRow label="Git Status" value={activeFileNode?.git?.status?.toUpperCase()} />
-                      <InfoRow label="Git Branch" value="main" />
-                    </div>
-                  </div>
-
-                  {/* CODE INFORMATION */}
-                  <div className="flex flex-col border border-zinc-800 rounded bg-[#13131A] overflow-hidden">
-                    <button onClick={() => setOpenCode(!openCode)} className="px-3 py-2 bg-zinc-900 hover:bg-zinc-800 text-xs font-mono font-bold text-zinc-400 border-b border-zinc-800 text-left transition-colors">
-                      {openCode ? '[-] CODE INFORMATION' : '[+] CODE INFORMATION'}
-                    </button>
-                    {openCode && (
-                      <div className="p-3 flex flex-col">
-                        <InfoRow label="Language" value={activeFileNode?.extension?.replace('.', '')?.toUpperCase()} />
-                        <InfoRow label="Lines of Code" value={activeFileNode?.LOC || (activeFileNode?.fileContent ? activeFileNode.fileContent.split('\n').length : null)} />
-                        <InfoRow label="Functions" value={activeFileNode?.complexity?.functions || Math.floor((activeFileNode?.LOC || 0) / 20)} />
-                        <InfoRow label="Classes" value={activeFileNode?.complexity?.classes || 0} />
-                        <InfoRow label="Imports" value={activeFileNode?.complexity?.imports || activeFileNode?.imports?.length} />
-                        <InfoRow label="Complexity Score" value={activeFileNode?.complexity?.score} />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* DEPENDENCIES */}
-                  <div className="flex flex-col border border-zinc-800 rounded bg-[#13131A] overflow-hidden">
-                    <button onClick={() => setOpenDeps(!openDeps)} className="px-3 py-2 bg-zinc-900 hover:bg-zinc-800 text-xs font-mono font-bold text-zinc-400 border-b border-zinc-800 text-left transition-colors">
-                      {openDeps ? '[-] DEPENDENCIES & CONNECTIONS' : '[+] DEPENDENCIES & CONNECTIONS'}
-                    </button>
-                    {openDeps && (
-                      <div className="p-3 flex flex-col">
-                        <InfoRow label="Imports" value={activeFileNode?.imports?.length} />
-                        <InfoRow label="Imported By" value={activeFileNode?.importedBy?.length} />
-                        <InfoRow label="Dependencies" value={activeFileNode?.dependencies?.length} />
-                        <InfoRow label="Used By" value={activeFileNode?.dependents?.length} />
-                        <InfoRow label="Database Connections" value="None detected" />
-                        <InfoRow label="Environment Variables" value={activeFileNode?.fileContent?.includes('process.env') ? 'Present' : 'None detected'} />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* AI ANALYSIS */}
-                  <div className="flex flex-col border border-zinc-800 rounded bg-[#13131A] overflow-hidden">
-                    <button onClick={() => setOpenAi(!openAi)} className="px-3 py-2 bg-zinc-900 hover:bg-zinc-800 text-xs font-mono font-bold text-zinc-400 border-b border-zinc-800 text-left transition-colors">
-                      {openAi ? '[-] AI ANALYSIS' : '[+] AI ANALYSIS'}
-                    </button>
-                    {openAi && (
-                      <div className="p-3 flex flex-col">
-                        <InfoRow label="Status" value={activeFileNode?.health?.toUpperCase()} />
-                        <InfoRow label="AI Confidence" value="98%" />
-                        <InfoRow label="Risk Level" value={activeFileNode?.risk?.toUpperCase()} />
-                        <InfoRow label="Architecture Role" value="Internal Logic Controller" />
-                        <InfoRow label="Potential Bugs" value={activeFileNode?.health === 'critical' ? '2 Detected' : '0 Detected'} />
-                        <InfoRow label="Security Issues" value={activeFileNode?.health === 'critical' ? 'High Risk Vector' : 'Clean'} />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* ISSUES FOUND */}
-                  <div className="flex flex-col border border-zinc-800 rounded bg-[#13131A] overflow-hidden">
-                    <button onClick={() => setOpenIssues(!openIssues)} className="px-3 py-2 bg-zinc-900 hover:bg-zinc-800 text-xs font-mono font-bold text-zinc-400 border-b border-zinc-800 text-left transition-colors">
-                      {openIssues ? '[-] ISSUES FOUND' : '[+] ISSUES FOUND'}
-                    </button>
-                    {openIssues && (
-                      <div className="p-3 flex flex-col">
-                        <InfoRow label="Critical" value={activeFileNode?.issues?.filter((i:any)=>i.severity==='critical').length || (activeFileNode?.health === 'critical' ? 1 : 0)} />
-                        <InfoRow label="High" value={activeFileNode?.issues?.filter((i:any)=>i.severity==='high').length || 0} />
-                        <InfoRow label="Medium" value={activeFileNode?.issues?.filter((i:any)=>i.severity==='medium').length || 0} />
-                        <InfoRow label="Low" value={activeFileNode?.issues?.filter((i:any)=>i.severity==='low').length || 0} />
-                        <InfoRow label="Suggestions" value="Check Spark Context" />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* GIT / VERSION CONTROL */}
-                  <div className="flex flex-col border border-zinc-800 rounded bg-[#13131A] overflow-hidden">
-                    <button onClick={() => setOpenGit(!openGit)} className="px-3 py-2 bg-zinc-900 hover:bg-zinc-800 text-xs font-mono font-bold text-zinc-400 border-b border-zinc-800 text-left transition-colors">
-                      {openGit ? '[-] GIT / VERSION CONTROL' : '[+] GIT / VERSION CONTROL'}
-                    </button>
-                    {openGit && (
-                      <div className="p-3 flex flex-col">
-                        <InfoRow label="Current Branch" value="main" />
-                        <InfoRow label="Last Commit Author" value={activeFileNode?.git?.author} />
-                        <InfoRow label="Uncommitted Changes" value={activeFileNode?.git?.status !== 'unchanged' ? 'Yes' : 'No'} />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* MULTI-MEDIA VIEWER RELOCATED TO CENTER VIEWPORT */}
-                  </div>
-                </div>
-
-                {/* MACRO ACTIONS DECK MATRIX */}
-                <div className="mt-auto bg-[#0F0F16] border-t border-[#1E1E26] p-4 flex flex-col gap-2 shrink-0">
-                  <span className="text-[10px] font-mono text-zinc-500 mb-1 tracking-widest uppercase">[ Command Console ]</span>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button onClick={() => { setActiveFileNode(null); setSelectedNode(null); setSelectedNodeId(null); setIsLeftPanelMinimized(false); }} className="px-3 py-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded text-[10px] font-mono text-zinc-400 hover:text-white transition-colors text-left">
-                      [ CLOSE PANEL ]
-                    </button>
-                    <button onClick={() => { 
-                      (window as any).SelectedNodeFileBuffer = nodeSourceCode || activeFileNode?.fileContent || ''; 
-                      const prompt = `Analyze and refactor the security vulnerabilities in this code file:\n\n\`\`\`\n${nodeSourceCode || activeFileNode?.fileContent || ''}\n\`\`\``;
-                      window.dispatchEvent(new CustomEvent('ai:trigger-prompt', { detail: { prompt, node: activeFileNode } }));
-                    }} className="px-3 py-2 bg-purple-900/20 hover:bg-purple-900/40 border border-purple-900/50 rounded text-[10px] font-mono text-purple-400 hover:text-purple-300 transition-colors text-left">
-                      [ CONNECT TO SPARK ]
-                    </button>
-                    <button onClick={handleViewSource} className="px-3 py-2 bg-cyan-900/10 hover:bg-cyan-900/30 border border-cyan-900/30 rounded text-[10px] font-mono text-cyan-400 hover:text-cyan-300 transition-colors text-left col-span-2">
-                      [ VIEW SOURCE ]
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.div>
-      )}
       </AnimatePresence>
 
       <div className="absolute inset-0 z-0 cursor-grab active:cursor-grabbing select-none">
@@ -1342,18 +1176,19 @@ function NeuralGraphDashboardInner() {
         )}
       </div>
 
+      {/* RIGHT-SIDE FILE / SOURCE CODE INSPECTOR DRAWER */}
       <AnimatePresence>
         {selectedNode && !isGraphFullScreen && (
           <motion.div
-            initial={{ x: 500, opacity: 0 }}
+            initial={{ x: 400, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            exit={{ x: 500, opacity: 0 }}
+            exit={{ x: 400, opacity: 0 }}
             transition={{ type: 'spring', damping: 25, stiffness: 120 }}
-            className="w-[450px] h-full border-l border-[#1E1E26] bg-[#0B0B10] p-6 flex flex-col gap-5 z-25 relative select-text"
+            className="absolute top-16 right-0 bottom-8 w-[380px] z-50 bg-[#0B0B10]/95 border-l border-[#1E1E26] p-6 flex flex-col justify-between backdrop-blur-md shadow-2xl overflow-hidden select-text pointer-events-auto"
           >
-            <div className="flex items-center justify-between border-b border-white/5 pb-4 select-none">
+            <div className="flex items-center justify-between border-b border-white/5 pb-4 select-none shrink-0">
               <div className="flex flex-col">
-                <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
+                <span className="text-xs font-mono font-bold text-white uppercase tracking-wider truncate max-w-[260px]">
                   {selectedNode?.label}
                 </span>
                 {selectedNode?.health === 'critical' ? (
@@ -1369,19 +1204,21 @@ function NeuralGraphDashboardInner() {
               <button 
                 onClick={() => {
                   setSelectedNode(null);
+                  setSelectedNodeId(null);
+                  setActiveFileNode(null);
                   setActiveFileContext(null);
                 }}
-                className="text-gray-500 hover:text-white transition-colors duration-200 text-xs font-mono"
+                className="text-gray-500 hover:text-white transition-colors duration-200 text-xs font-mono font-bold tracking-wider uppercase"
               >
                 CLOSE
               </button>
             </div>
 
-            <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-1">
+            <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-1 my-4 custom-scrollbar">
               {(selectedNode?.health === 'critical' || selectedNode?.health === 'warning') ? (
                 <>
                   {selectedNode?.oldCode && selectedNode?.newCode && (
-                    <div className="grid grid-cols-2 gap-3 h-[220px]">
+                    <div className="grid grid-cols-2 gap-3 h-[200px] shrink-0">
                       <div className="flex flex-col bg-red-950/20 border border-red-500/20 rounded-xl overflow-hidden">
                         <div className="bg-red-500/10 px-3 py-1.5 border-b border-red-500/10 select-none">
                           <span className="font-mono text-[9px] font-bold text-red-400 uppercase">OLD CODE</span>
@@ -1401,7 +1238,7 @@ function NeuralGraphDashboardInner() {
                     </div>
                   )}
 
-                  <div className="bg-white/5 border border-white/5 rounded-xl p-4 flex flex-col gap-2">
+                  <div className="bg-white/5 border border-white/5 rounded-xl p-4 flex flex-col gap-2 shrink-0">
                     <span className="font-mono text-[9px] font-bold text-purple-400 uppercase tracking-wider select-none">
                       Vulnerability Details
                     </span>
@@ -1416,11 +1253,11 @@ function NeuralGraphDashboardInner() {
                   </div>
                 </>
               ) : selectedNode?.fileContent ? (
-                <div className="flex-1 flex flex-col bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+                <div className="flex-1 flex flex-col bg-white/5 border border-white/10 rounded-xl overflow-hidden min-h-[160px]">
                   <div className="bg-[#0B0B10] px-3 py-1.5 border-b border-white/10 select-none">
                      <span className="font-mono text-[9px] font-bold text-gray-400 uppercase">RAW FILE CONTENT</span>
                   </div>
-                  <pre className="p-3 font-mono text-[10px] text-gray-300 leading-relaxed overflow-auto whitespace-pre select-text h-full font-light">
+                  <pre className="p-3 font-mono text-[10px] text-gray-300 leading-relaxed overflow-auto whitespace-pre select-text h-full font-light custom-scrollbar">
                     <code>{selectedNode?.fileContent}</code>
                   </pre>
                 </div>
@@ -1430,32 +1267,27 @@ function NeuralGraphDashboardInner() {
                     Directory Node selected. Expand child nodes to inspect source files.
                   </span>
                 </div>
-              ) : isFileLoading === true && selectedNodeId !== null ? (
-                <div className="flex-1 flex items-center justify-center text-center p-6 flex-col gap-3">
-                  <span className="w-6 h-6 rounded-full border-t-2 border-cyber-500 animate-spin" />
-                  <span className="text-[10px] font-mono text-gray-500 tracking-widest uppercase">
-                    Loading File Stream...
-                  </span>
-                </div>
               ) : null}
             </div>
 
-            <div className="border-t border-white/5 pt-4 flex gap-3 select-none">
+            <div className="border-t border-white/5 pt-4 flex gap-3 select-none shrink-0">
               <button
                 onClick={() => {
                   setSelectedNode(null);
+                  setSelectedNodeId(null);
+                  setActiveFileNode(null);
                   setActiveFileContext(null);
                 }}
-                className="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl py-3 font-mono text-[10px] font-bold uppercase text-gray-400 tracking-wider transition-colors duration-200"
+                className="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl py-3 font-mono text-[10px] font-bold uppercase text-gray-400 hover:text-white tracking-wider transition-colors duration-200"
               >
-                {selectedNode.health === 'critical' ? 'Discard' : 'Close Viewer'}
+                {selectedNode.health === 'critical' ? 'DISCARD' : 'CLOSE VIEWER'}
               </button>
               {selectedNode.health === 'critical' && (
                 <button
                   onClick={handleFixNode}
                   className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 border border-green-400/20 shadow-green-glow rounded-xl py-3 font-mono text-[10px] font-bold uppercase text-white tracking-wider hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
                 >
-                  ✔ Fix Vulnerability
+                  ✔ FIX VULNERABILITY
                 </button>
               )}
             </div>
