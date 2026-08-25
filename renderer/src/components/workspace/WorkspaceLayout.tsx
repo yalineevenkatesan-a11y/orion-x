@@ -127,8 +127,14 @@ const FileTreeNode = ({
 };
 export function WorkspaceLayout() {
   const [bootState, setBootState] = useState<'initializing' | 'active'>('initializing');
-  const { activeWorkspace } = useWorkspaceUi();
+  const { activeWorkspace, selectedNode: contextSelectedNode, setSelectedNode: setContextSelectedNode } = useWorkspaceUi();
   const [selectedNode, setSelectedNode] = useState<any>(null);
+
+  useEffect(() => {
+    if (contextSelectedNode !== undefined) {
+      setSelectedNode(contextSelectedNode);
+    }
+  }, [contextSelectedNode]);
   const [isCodeModalOpen, setCodeModalOpen] = useState(false);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [windowSize, setWindowSize] = useState({ width: 1920, height: 1080 });
