@@ -131,7 +131,12 @@ export function ProjectSidebar() {
         
         {/* Settings Configuration Gear Trigger */}
         <button
-          onClick={toggleSettings}
+          onClick={() => {
+            toggleSettings();
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('orion:toggle-settings'));
+            }
+          }}
           className="text-gray-500 hover:text-cyber-400 p-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer active:scale-90"
           title="Open System Settings"
           type="button"

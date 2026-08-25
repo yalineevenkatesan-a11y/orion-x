@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { NeuralNodes } from './NeuralNodes';
 import dynamic from 'next/dynamic';
 
@@ -15,33 +15,272 @@ import { useWorkspaceUi } from '../../context/WorkspaceUiContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import NeuralGraphDashboard from './NeuralGraphDashboard';
 
+interface DraggableState {
+  x: number;
+  y: number;
+}
+
+export function useDraggableModal(initialPos = { x: 0, y: 0 }) {
+  const [position, setPosition] = useState<DraggableState>(initialPos);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartRef = useRef<{ mouseX: number; mouseY: number; posX: number; posY: number }>({
+    mouseX: 0,
+    mouseY: 0,
+    posX: 0,
+    posY: 0,
+  });
+
+  const handleHeaderMouseDown = useCallback((e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('button, input, select, textarea, [data-no-drag]')) {
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+    dragStartRef.current = {
+      mouseX: e.clientX,
+      mouseY: e.clientY,
+      posX: position.x,
+      posY: position.y,
+    };
+  }, [position]);
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const dx = e.clientX - dragStartRef.current.mouseX;
+      const dy = e.clientY - dragStartRef.current.mouseY;
+      const nextX = dragStartRef.current.posX + dx;
+      const nextY = dragStartRef.current.posY + dy;
+
+      const limitX = typeof window !== 'undefined' ? window.innerWidth * 0.85 : 800;
+      const limitY = typeof window !== 'undefined' ? window.innerHeight * 0.85 : 600;
+
+      setPosition({
+        x: Math.max(-limitX, Math.min(limitX, nextX)),
+        y: Math.max(-limitY, Math.min(limitY, nextY)),
+      });
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging]);
+
+  const resetPosition = useCallback(() => {
+    setPosition({ x: 0, y: 0 });
+  }, []);
+
+  return {
+    position,
+    setPosition,
+    isDragging,
+    resetPosition,
+    headerProps: {
+      onMouseDown: handleHeaderMouseDown,
+      style: { cursor: isDragging ? 'grabbing' : 'grab', userSelect: 'none' as const },
+    },
+    style: {
+      transform: `translate3d(${position.x}px, ${position.y}px, 0)`,
+      willChange: isDragging ? 'transform' : 'auto',
+    } as React.CSSProperties,
+  };
+}
+
+export function ImagePanZoomViewer({ src, alt }: { src: string; alt: string }) {
+  const [scale, setScale] = useState(1);
+  const [translateX, setTranslateX] = useState(0);
+  const [translateY, setTranslateY] = useState(0);
+  const [isPanning, setIsPanning] = useState(false);
+  const panStartRef = useRef<{ mouseX: number; mouseY: number; startX: number; startY: number }>({
+    mouseX: 0,
+    mouseY: 0,
+    startX: 0,
+    startY: 0,
+  });
+
+  useEffect(() => {
+    setScale(1);
+    setTranslateX(0);
+    setTranslateY(0);
+  }, [src]);
+
+  const handleReset = () => {
+    setScale(1);
+    setTranslateX(0);
+    setTranslateY(0);
+  };
+
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const zoomDelta = e.deltaY < 0 ? 0.2 : -0.2;
+    setScale((prev) => Math.min(5, Math.max(0.5, parseFloat((prev + zoomDelta).toFixed(2)))));
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setIsPanning(true);
+    panStartRef.current = {
+      mouseX: e.clientX,
+      mouseY: e.clientY,
+      startX: translateX,
+      startY: translateY,
+    };
+  };
+
+  useEffect(() => {
+    if (!isPanning) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const dx = e.clientX - panStartRef.current.mouseX;
+      const dy = e.clientY - panStartRef.current.mouseY;
+      setTranslateX(panStartRef.current.startX + dx);
+      setTranslateY(panStartRef.current.startY + dy);
+    };
+
+    const handleMouseUp = () => {
+      setIsPanning(false);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isPanning]);
+
+  return (
+    <div 
+      className="relative w-full h-full flex flex-col items-center justify-center overflow-hidden select-none bg-[#07070B]"
+      onWheel={handleWheel}
+      onMouseDown={(e) => e.stopPropagation()}
+    >
+      {/* Pan & Zoom Controls Toolbar */}
+      <div 
+        className="absolute top-4 right-4 z-20 flex items-center gap-2 bg-[#15151C]/90 backdrop-blur border border-[#2A2A35] px-3 py-1.5 rounded-lg shadow-lg font-mono text-xs text-[#E2E8F0]"
+        data-no-drag
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          onClick={() => setScale((prev) => Math.max(0.5, parseFloat((prev - 0.25).toFixed(2))))}
+          className="px-2 py-0.5 bg-[#0B0B10] border border-[#2A2A35] rounded hover:border-[#00D2FF] hover:text-[#00D2FF] transition-colors"
+          title="Zoom Out"
+        >
+          -
+        </button>
+        <span className="min-w-[50px] text-center font-bold text-[#00D2FF]">
+          {Math.round(scale * 100)}%
+        </span>
+        <button
+          type="button"
+          onClick={() => setScale((prev) => Math.min(5, parseFloat((prev + 0.25).toFixed(2))))}
+          className="px-2 py-0.5 bg-[#0B0B10] border border-[#2A2A35] rounded hover:border-[#00D2FF] hover:text-[#00D2FF] transition-colors"
+          title="Zoom In"
+        >
+          +
+        </button>
+        <button
+          type="button"
+          onClick={handleReset}
+          className="ml-2 px-2.5 py-0.5 bg-[#0B0B10] border border-[#2A2A35] rounded hover:border-cyan-400 hover:text-white transition-colors text-[10px] font-bold tracking-wider"
+          title="Reset Transformations"
+        >
+          [ RESET ]
+        </button>
+      </div>
+
+      {/* Panning & Zooming Image Stage */}
+      <div 
+        className="w-full h-full flex items-center justify-center cursor-grab active:cursor-grabbing p-4"
+        style={{ cursor: isPanning ? 'grabbing' : 'grab' }}
+        onMouseDown={handleMouseDown}
+      >
+        <img
+          src={src}
+          alt={alt}
+          draggable={false}
+          className="max-w-full max-h-full object-contain drop-shadow-2xl rounded-md pointer-events-none"
+          style={{
+            transform: `translate3d(${translateX}px, ${translateY}px, 0px) scale(${scale})`,
+            transition: isPanning ? 'none' : 'transform 0.08s ease-out',
+            transformOrigin: 'center center',
+          }}
+        />
+      </div>
+
+      {/* Helper Badge */}
+      <div className="absolute bottom-3 left-4 z-10 text-[10px] font-mono text-[#64748B] pointer-events-none">
+        DRAG TO PAN • WHEEL TO ZOOM (0.5x - 5x)
+      </div>
+    </div>
+  );
+}
+
 const EXTENSION_MATRIX = [
   { cat: 'Documents', exts: ['.doc', '.docx', '.docm', '.odt', '.rtf', '.txt', '.pages', '.wps', '.tex', '.md', '.rst'] },
   { cat: 'PDF / eBooks', exts: ['.pdf', '.epub', '.mobi', '.azw', '.azw3', '.djvu', '.fb2', '.cbr', '.cbz'] },
-  { cat: 'Images', exts: ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.tiff', '.tif', '.svg', '.ico', '.heic', '.heif', '.avif', '.raw'] },
-  { cat: 'Video', exts: ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm', '.m4v', '.mpeg', '.mpg', '.3gp', '.ts'] },
-  { cat: 'Audio', exts: ['.mp3', '.wav', '.flac', '.aac', '.ogg', '.opus', '.m4a', '.wma', '.aiff'] },
-  { cat: 'Archives', exts: ['.zip', '.rar', '.7z', '.tar', '.gz', '.bz2', '.xz', '.zst', '.tgz', '.iso'] },
+  { cat: 'Images', exts: ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.tiff', '.tif', '.svg', '.ico', '.heic', '.heif', '.avif', '.raw', '.cr2', '.cr3', '.nef', '.arw', '.dng'] },
+  { cat: 'Video', exts: ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm', '.m4v', '.mpeg', '.mpg', '.3gp', '.ts', '.mts', '.m2ts'] },
+  { cat: 'Audio', exts: ['.mp3', '.wav', '.flac', '.aac', '.ogg', '.opus', '.m4a', '.wma', '.aiff', '.alac', '.mid', '.midi'] },
+  { cat: 'Archives', exts: ['.zip', '.rar', '.7z', '.tar', '.gz', '.bz2', '.xz', '.zst', '.tgz', '.tbz2', '.cab', '.iso', '.img'] },
   { cat: 'JavaScript / Web', exts: ['.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs', '.html', '.htm', '.css', '.scss', '.sass', '.less', '.vue', '.svelte'] },
-  { cat: 'Python', exts: ['.py', '.pyw', '.pyi', '.ipynb'] },
-  { cat: 'Java / Kotlin', exts: ['.java', '.class', '.jar', '.kt', '.kts'] },
-  { cat: 'C / C++', exts: ['.c', '.h', '.cc', '.cpp', '.cxx', '.hpp', '.hh'] },
-  { cat: 'C# / .NET', exts: ['.cs', '.csx', '.csproj', '.sln'] },
-  { cat: 'Rust / Go', exts: ['.rs', '.go', '.mod', '.sum', '.toml'] },
-  { cat: 'SQL / Database', exts: ['.sql', '.db', '.sqlite', '.sqlite3', '.mdb'] },
+  { cat: 'Python', exts: ['.py', '.pyw', '.pyi', '.pyc', '.pyo', '.ipynb', '.pyx', '.pxd', '.pxi'] },
+  { cat: 'Java', exts: ['.java', '.class', '.jar', '.war', '.ear', '.jsp'] },
+  { cat: 'C / C++', exts: ['.c', '.h', '.cc', '.cpp', '.cxx', '.hpp', '.hh', '.hxx', '.inl'] },
+  { cat: 'C# / .NET', exts: ['.cs', '.csx', '.cshtml', '.vb', '.fs', '.fsx', '.sln', '.csproj', '.vbproj'] },
+  { cat: 'Go', exts: ['.go', '.mod', '.sum', '.work'] },
+  { cat: 'Rust', exts: ['.rs', '.toml'] },
+  { cat: 'PHP', exts: ['.php', '.php3', '.php4', '.php5', '.phtml', '.phar'] },
+  { cat: 'Ruby', exts: ['.rb', '.rbw', '.rake', '.gemspec', '.erb'] },
+  { cat: 'Kotlin', exts: ['.kt', '.kts'] },
+  { cat: 'Swift', exts: ['.swift'] },
+  { cat: 'Dart / Flutter', exts: ['.dart'] },
+  { cat: 'SQL / Database', exts: ['.sql', '.db', '.sqlite', '.sqlite3', '.mdb', '.accdb', '.dbf', '.dump'] },
   { cat: 'JSON / Data', exts: ['.json', '.jsonl', '.ndjson', '.yaml', '.yml', '.xml', '.csv', '.tsv', '.toml', '.ini', '.conf', '.env'] },
-  { cat: 'Shell / Scripts', exts: ['.sh', '.bash', '.zsh', '.fish', '.bat', '.cmd', '.ps1'] },
-  { cat: 'Docker / DevOps', exts: ['.dockerfile', '.yaml', '.yml', '.tf', '.tfvars', '.hcl'] },
-  { cat: 'Design / 3D', exts: ['.psd', '.ai', '.fig', '.blend', '.fbx', '.obj', '.gltf', '.glb'] }
+  { cat: 'Shell', exts: ['.sh', '.bash', '.zsh', '.fish', '.bat', '.cmd', '.ps1', '.psm1', '.psd1'] },
+  { cat: 'Linux/System', exts: ['.service', '.socket', '.mount', '.desktop', '.deb', '.rpm', '.appimage'] },
+  { cat: 'Windows', exts: ['.exe', '.dll', '.sys', '.msi', '.msix', '.scr', '.com', '.cpl', '.drv', '.ocx'] },
+  { cat: 'macOS', exts: ['.app', '.dmg', '.pkg', '.plist', '.framework', '.bundle'] },
+  { cat: 'Android', exts: ['.apk', '.aab', '.dex', '.odex', '.vdex', '.so', '.aar'] },
+  { cat: 'iOS', exts: ['.ipa', '.mobileconfig', '.xcarchive', '.framework', '.xcframework'] },
+  { cat: 'Docker / DevOps', exts: ['.dockerfile', '.yaml', '.yml', '.tf', '.tfvars', '.hcl', '.vagrantfile'] },
+  { cat: 'Git', exts: ['.gitignore', '.gitattributes', '.gitmodules', '.gitconfig'] },
+  { cat: 'AI / ML', exts: ['.pt', '.pth', '.ckpt', '.safetensors', '.onnx', '.pb', '.h5', '.keras', '.tflite', '.bin', '.gguf', '.ggml', '.pkl', '.joblib', '.npz', '.npy'] },
+  { cat: 'Jupyter / Data Science', exts: ['.ipynb', '.parquet', '.feather', '.arrow', '.pickle', '.pkl', '.rds', '.rda'] },
+  { cat: 'MATLAB', exts: ['.m', '.mat', '.mlx', '.fig'] },
+  { cat: 'R', exts: ['.r', '.rmd', '.rds', '.rda'] },
+  { cat: 'Excel / Spreadsheet', exts: ['.xls', '.xlsx', '.xlsm', '.xlsb', '.xltx', '.ods', '.csv'] },
+  { cat: 'PowerPoint', exts: ['.ppt', '.pptx', '.pptm', '.pps', '.ppsx', '.odp'] },
+  { cat: 'CAD', exts: ['.dwg', '.dxf', '.dgn', '.step', '.stp', '.iges', '.igs', '.stl', '.obj', '.3mf'] },
+  { cat: '3D', exts: ['.blend', '.fbx', '.obj', '.gltf', '.glb', '.dae', '.abc', '.3ds', '.max', '.ma', '.mb', '.c4d'] },
+  { cat: 'Game Development', exts: ['.unity', '.unitypackage', '.uasset', '.umap', '.pak', '.wad', '.bsp', '.sav'] },
+  { cat: 'Fonts', exts: ['.ttf', '.otf', '.woff', '.woff2', '.eot', '.fon'] },
+  { cat: 'Design', exts: ['.psd', '.ai', '.eps', '.indd', '.xd', '.fig', '.sketch', '.afdesign', '.afphoto'] },
+  { cat: 'GIS / Maps', exts: ['.shp', '.shx', '.dbf', '.prj', '.geojson', '.kml', '.kmz', '.gpx', '.tif'] },
+  { cat: 'Scientific', exts: ['.fits', '.hdf', '.hdf5', '.nc', '.cdf', '.dat', '.xyz', '.pdb', '.mol', '.sdf'] }
 ];
 
-const filterFileTree = (node: any, query: string, activeExts: string[]): any => {
+const filterFileTree = (node: any, query: string, activeExts: string[], activeHealth: string[] = []): any => {
   if (!node) return null;
   const cleanQuery = query.trim().toLowerCase();
 
   if (node.type === 'dir') {
     const filteredChildren = (node.children || [])
-      .map((child: any) => filterFileTree(child, query, activeExts))
+      .map((child: any) => filterFileTree(child, query, activeExts, activeHealth))
       .filter(Boolean);
 
     if (filteredChildren.length > 0) {
@@ -66,7 +305,13 @@ const filterFileTree = (node: any, query: string, activeExts: string[]): any => 
     }
   }
 
-  if (matchesSearch && matchesExt) {
+  let matchesHealth = true;
+  if (activeHealth.length > 0) {
+    const nodeHealth = (node.health || 'healthy').toLowerCase();
+    matchesHealth = activeHealth.includes(nodeHealth);
+  }
+
+  if (matchesSearch && matchesExt && matchesHealth) {
     return node;
   }
   return null;
@@ -127,14 +372,8 @@ const FileTreeNode = ({
 };
 export function WorkspaceLayout() {
   const [bootState, setBootState] = useState<'initializing' | 'active'>('initializing');
-  const { activeWorkspace, selectedNode: contextSelectedNode, setSelectedNode: setContextSelectedNode } = useWorkspaceUi();
+  const { activeWorkspace } = useWorkspaceUi();
   const [selectedNode, setSelectedNode] = useState<any>(null);
-
-  useEffect(() => {
-    if (contextSelectedNode !== undefined) {
-      setSelectedNode(contextSelectedNode);
-    }
-  }, [contextSelectedNode]);
   const [isCodeModalOpen, setCodeModalOpen] = useState(false);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [windowSize, setWindowSize] = useState({ width: 1920, height: 1080 });
@@ -144,6 +383,13 @@ export function WorkspaceLayout() {
   const [basicInfoOpen, setBasicInfoOpen] = useState(true);
   const [codeInfoOpen, setCodeInfoOpen] = useState(false);
   const [depsOpen, setDepsOpen] = useState(false);
+
+  const fileViewerDrag = useDraggableModal();
+  const filesOverlayDrag = useDraggableModal();
+  const chatOverlayDrag = useDraggableModal();
+  const searchOverlayDrag = useDraggableModal();
+  const memoryOverlayDrag = useDraggableModal();
+  const codeModalDrag = useDraggableModal();
 
   const handleFileClick = async (node: any) => {
       const content = await (window as any).electronAPI?.ipcRenderer?.invoke('fs:readFile', node.path);
@@ -171,23 +417,14 @@ export function WorkspaceLayout() {
   const [fileSearchQuery, setFileSearchQuery] = useState('');
   const [isFsFilterOpen, setIsFsFilterOpen] = useState(false);
   const [selectedExtensions, setSelectedExtensions] = useState<string[]>([]);
+  const [selectedHealth, setSelectedHealth] = useState<string[]>([]);
+  const [fsFilterMode, setFsFilterMode] = useState<'ALL' | 'ANY'>('ALL');
   const [fsFilterSearchQuery, setFsFilterSearchQuery] = useState('');
-  const [collapsedCats, setCollapsedCats] = useState<Record<string, boolean>>({});
 
-  const toggleCat = (catName: string) => {
-    setCollapsedCats(prev => ({
-      ...prev,
-      [catName]: !prev[catName]
-    }));
-  };
-
-  const toggleAllInCategory = (exts: string[]) => {
-    const allSelected = exts.length > 0 && exts.every(e => selectedExtensions.includes(e));
-    if (allSelected) {
-      setSelectedExtensions(prev => prev.filter(e => !exts.includes(e)));
-    } else {
-      setSelectedExtensions(prev => Array.from(new Set([...prev, ...exts])));
-    }
+  const toggleHealth = (h: string) => {
+    setSelectedHealth(prev => 
+      prev.includes(h) ? prev.filter(item => item !== h) : [...prev, h]
+    );
   };
 
   const toggleExtension = (ext: string) => {
@@ -205,9 +442,9 @@ export function WorkspaceLayout() {
 
   const filteredFileTree = useMemo(() => {
     if (!fileTree) return null;
-    if (!fileSearchQuery.trim() && selectedExtensions.length === 0) return fileTree;
-    return filterFileTree(fileTree, fileSearchQuery, selectedExtensions);
-  }, [fileTree, fileSearchQuery, selectedExtensions]);
+    if (!fileSearchQuery.trim() && selectedExtensions.length === 0 && selectedHealth.length === 0) return fileTree;
+    return filterFileTree(fileTree, fileSearchQuery, selectedExtensions, selectedHealth);
+  }, [fileTree, fileSearchQuery, selectedExtensions, selectedHealth]);
 
   const isActive = bootState === 'active';
 
@@ -329,7 +566,15 @@ export function WorkspaceLayout() {
                 >
                     Multi-Agent Chat Console
                 </div>
-                <div className="px-4 py-3 text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26] cursor-pointer border-t border-[#2A2A35]">System Settings</div>
+                <div 
+                    onClick={() => {
+                        window.dispatchEvent(new CustomEvent('orion:toggle-settings'));
+                        setShowOptions(false);
+                    }}
+                    className="px-4 py-3 text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26] cursor-pointer border-t border-[#2A2A35]"
+                >
+                    System Settings
+                </div>
             </div>
         )}
 
@@ -350,13 +595,26 @@ export function WorkspaceLayout() {
                         onPointerDown={(e) => e.stopPropagation()}
                         onTouchStart={(e) => e.stopPropagation()}
                         className="absolute inset-0 z-50 bg-[#0B0B10] pl-[25%] pr-8 py-8 h-full max-h-screen overflow-y-auto pointer-events-auto flex flex-col font-mono text-xs text-[#A0AEC0]"
+                        style={filesOverlayDrag.style}
                     >
-                        <div className="flex justify-between items-center mb-4 pb-4 border-b border-[#1E1E26] shrink-0">
+                        <div 
+                            {...filesOverlayDrag.headerProps}
+                            className="flex justify-between items-center mb-4 pb-4 border-b border-[#1E1E26] shrink-0 cursor-move select-none"
+                        >
                             <div>
-                                <h2 className="text-white font-bold tracking-widest text-sm font-mono">[ FILE SYSTEM ]</h2>
+                                <div className="flex items-center gap-2">
+                                    <h2 className="text-white font-bold tracking-widest text-sm font-mono">[ FILE SYSTEM ]</h2>
+                                    <span className="text-[10px] text-[#64748B] font-mono tracking-wider">[DRAGGABLE]</span>
+                                </div>
                                 <p className="text-[#64748B] text-xs font-mono mt-1">Structural Workspace Context & Vault Explorer</p>
                             </div>
-                            <button onClick={() => setActiveView(null)} className="text-xs font-bold text-[#A0AEC0] hover:text-white font-mono tracking-widest uppercase">CLOSE [x]</button>
+                            <button 
+                                data-no-drag
+                                onClick={() => setActiveView(null)} 
+                                className="text-xs font-bold text-[#A0AEC0] hover:text-white font-mono tracking-widest uppercase px-2 py-1 rounded bg-[#15151C] border border-[#2A2A35]"
+                            >
+                                CLOSE [x]
+                            </button>
                         </div>
 
                         {/* Search & Filter Bar Controls */}
@@ -434,19 +692,21 @@ export function WorkspaceLayout() {
                                         animate={{ opacity: 1, y: 0, scale: 1 }}
                                         exit={{ opacity: 0, y: -8, scale: 0.98 }}
                                         transition={{ duration: 0.15 }}
-                                        className="w-full max-w-2xl bg-[#0B0B10] border border-[#2A2A35] rounded-xl shadow-[0_0_30px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col mt-2 max-h-[60vh] shrink-0 pointer-events-auto"
+                                        className="w-full max-w-2xl bg-[#0B0B10] border border-[#1E1E26] shadow-[0_0_25px_rgba(0,0,0,0.9)] rounded-xl flex flex-col overflow-hidden mt-2 max-h-[60vh] shrink-0 pointer-events-auto z-[60]"
                                     >
-                                        <div className="flex items-center justify-between border-b border-[#1E1E26] p-3 bg-[#13131A] shrink-0">
+                                        <div className="flex items-center justify-between border-b border-zinc-800 p-3 mb-1 drag-handle cursor-move bg-[#13131A] shrink-0">
                                             <div className="flex items-center gap-2">
                                                 <span className="text-xs font-mono font-bold tracking-wider text-purple-400">[ FILTER MATRIX SETTINGS ]</span>
-                                                {selectedExtensions.length > 0 && (
-                                                    <span className="text-[10px] font-mono text-[#64748B]">({selectedExtensions.length} active)</span>
+                                                {(selectedExtensions.length > 0 || selectedHealth.length > 0) && (
+                                                    <span className="text-[10px] font-mono text-[#64748B]">
+                                                        ({selectedExtensions.length + selectedHealth.length} active)
+                                                    </span>
                                                 )}
                                             </div>
                                             <div className="flex items-center gap-3">
-                                                {selectedExtensions.length > 0 && (
+                                                {(selectedExtensions.length > 0 || selectedHealth.length > 0) && (
                                                     <button 
-                                                        onClick={() => setSelectedExtensions([])}
+                                                        onClick={() => { setSelectedExtensions([]); setSelectedHealth([]); }}
                                                         className="text-[10px] font-mono text-purple-400 hover:text-white uppercase"
                                                     >
                                                         [Clear All]
@@ -460,85 +720,81 @@ export function WorkspaceLayout() {
                                                 </button>
                                             </div>
                                         </div>
-
-                                        <div className="p-3 border-b border-[#1E1E26] bg-[#0E0E14] shrink-0">
+                                        
+                                        <div className="px-3 pb-2 border-b border-zinc-800 shrink-0">
                                             <input 
                                                 type="text" 
                                                 value={fsFilterSearchQuery} 
                                                 onChange={(e) => setFsFilterSearchQuery(e.target.value)} 
                                                 placeholder="[ SEARCH CATEGORIES OR EXTENSIONS... ]" 
-                                                className="w-full bg-[#15151C] border border-[#2A2A35] rounded px-3 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-cyan-500 placeholder-[#64748B]"
+                                                className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-[10px] font-mono text-white focus:outline-none focus:border-cyan-500 placeholder-zinc-600"
                                             />
                                         </div>
 
-                                        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3.5 scrollbar-thin">
-                                            {EXTENSION_MATRIX.filter(catData => {
-                                                if (!fsFilterSearchQuery) return true;
-                                                const query = fsFilterSearchQuery.toLowerCase();
-                                                return catData.cat.toLowerCase().includes(query) || catData.exts.some(e => e.toLowerCase().includes(query));
-                                            }).map(catData => {
-                                                const query = fsFilterSearchQuery.toLowerCase();
-                                                const isCollapsed = Boolean(collapsedCats[catData.cat]);
-                                                const activeCountInCat = catData.exts.filter(e => selectedExtensions.includes(e)).length;
-                                                const allSelected = catData.exts.length > 0 && catData.exts.every(e => selectedExtensions.includes(e));
+                                        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-6 scrollbar-thin">
+                                            
+                                            {/* LOGIC ENGINE */}
+                                            <div className="flex flex-col gap-2">
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-[10px] font-mono text-gray-400 uppercase">Logic Engine</span>
+                                                    <button onClick={() => setFsFilterMode(prev => prev === 'ALL' ? 'ANY' : 'ALL')} className="text-[10px] font-mono bg-white/10 px-2 py-1 rounded border border-white/20 text-white hover:bg-white/20 transition-colors">
+                                                        {fsFilterMode === 'ALL' ? 'ALL (AND)' : 'ANY (OR)'}
+                                                    </button>
+                                                </div>
+                                            </div>
 
-                                                return (
-                                                    <div key={catData.cat} className="border border-[#2A2A35] rounded-lg overflow-hidden bg-[#121218] transition-all">
-                                                        <div 
-                                                            onClick={() => toggleCat(catData.cat)}
-                                                            className="bg-[#15151C] px-3.5 py-2.5 text-xs font-mono text-gray-200 cursor-pointer select-none hover:text-white hover:bg-[#1C1C24] flex justify-between items-center transition-colors border-b border-[#1E1E26]/60"
+                                            {/* HEALTH STATE */}
+                                            <div className="flex flex-col gap-2">
+                                                <span className="text-[10px] font-mono text-gray-500 uppercase">Health State</span>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {['healthy', 'warning', 'critical'].map(h => (
+                                                        <button 
+                                                            key={h} onClick={() => toggleHealth(h)}
+                                                            className={`px-3 py-1 text-[10px] font-mono rounded border transition-colors ${selectedHealth.includes(h) ? 'bg-cyan-900/40 border-cyan-500 text-white shadow-[0_0_10px_rgba(0,210,255,0.4)]' : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'}`}
                                                         >
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="text-[#00D2FF] font-bold text-xs">{isCollapsed ? '[+]' : '[-]'}</span>
-                                                                <span className="font-bold tracking-wide text-white text-xs">{catData.cat.toUpperCase()}</span>
-                                                                <span className="text-[10px] text-[#64748B]">({catData.exts.length} types)</span>
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                {activeCountInCat > 0 && (
-                                                                    <span className="text-[10px] text-purple-300 font-bold bg-purple-900/40 px-2 py-0.5 rounded border border-purple-500/50">
-                                                                        {activeCountInCat} active
-                                                                    </span>
-                                                                )}
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        toggleAllInCategory(catData.exts);
-                                                                    }}
-                                                                    className="text-[10px] text-cyan-400 hover:text-cyan-200 bg-cyan-950/40 border border-cyan-500/30 px-2.5 py-1 rounded transition-colors font-bold"
-                                                                >
-                                                                    {allSelected ? '[Deselect All]' : '[Select All]'}
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                        {!isCollapsed && (
-                                                            <div className="p-3 flex flex-wrap gap-2 bg-[#0B0B10]">
-                                                                {catData.exts.map(ext => {
-                                                                    const isSelected = selectedExtensions.includes(ext);
-                                                                    const isMatch = query.length > 0 && ext.toLowerCase().includes(query);
-                                                                    return (
-                                                                        <button 
-                                                                            key={ext} 
-                                                                            type="button"
-                                                                            onClick={() => toggleExtension(ext)}
-                                                                            className={`px-2.5 py-1.5 min-h-[28px] text-xs font-mono rounded-md border flex items-center gap-1.5 transition-all cursor-pointer ${
-                                                                                isSelected 
-                                                                                    ? 'bg-purple-900/50 border-purple-400 text-white shadow-[0_0_10px_rgba(168,85,247,0.5)] font-bold' 
-                                                                                    : (isMatch 
-                                                                                        ? 'bg-purple-900/20 border-purple-500/50 text-white' 
-                                                                                        : 'bg-[#15151C] border-[#2A2A35] text-gray-400 hover:bg-[#1E1E26] hover:text-white hover:border-[#3E3E4F]')
-                                                                            }`}
-                                                                        >
-                                                                            <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-purple-400 shadow-[0_0_6px_#c084fc]' : 'bg-[#2A2A35]'}`} />
-                                                                            <span>{ext}</span>
-                                                                        </button>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                );
-                                            })}
+                                                            {h === 'critical' ? '[CRIT]' : h === 'warning' ? '[WARN]' : '[OK]'} {h.toUpperCase()}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* FILE EXTENSION MATRIX */}
+                                            <div className="flex flex-col gap-2">
+                                                <span className="text-[10px] font-mono text-gray-500 uppercase">File Extension Matrix</span>
+                                                <div className="flex flex-col gap-3">
+                                                    {EXTENSION_MATRIX.filter(catData => {
+                                                        if (!fsFilterSearchQuery) return true;
+                                                        const query = fsFilterSearchQuery.toLowerCase();
+                                                        return catData.cat.toLowerCase().includes(query) || catData.exts.some(e => e.toLowerCase().includes(query));
+                                                    }).map(catData => {
+                                                        const query = fsFilterSearchQuery.toLowerCase();
+                                                        const isExpanded = query.length > 0 && (catData.cat.toLowerCase().includes(query) || catData.exts.some(e => e.toLowerCase().includes(query)));
+                                                        
+                                                        return (
+                                                            <details key={catData.cat} className="border border-white/5 rounded overflow-hidden" open={isExpanded || false}>
+                                                                <summary className="bg-[#13131A] px-3 py-2 text-[10px] font-mono text-gray-300 cursor-pointer select-none outline-none hover:text-white hover:bg-white/5">
+                                                                    {catData.cat.toUpperCase()}
+                                                                </summary>
+                                                                <div className="p-2 flex flex-wrap gap-1.5 bg-[#0B0B10]">
+                                                                    {catData.exts.map(ext => {
+                                                                        const isMatch = query.length > 0 && ext.toLowerCase().includes(query);
+                                                                        const isSelected = selectedExtensions.includes(ext);
+                                                                        return (
+                                                                            <button 
+                                                                                key={ext} onClick={() => toggleExtension(ext)}
+                                                                                className={`px-2 py-1 text-[9px] font-mono rounded border transition-colors ${isSelected ? 'bg-cyan-900/40 border-cyan-500 text-white shadow-[0_0_8px_rgba(0,210,255,0.3)]' : (isMatch ? 'bg-purple-900/30 border-purple-500/50 text-white' : 'bg-white/5 border-white/10 text-gray-500 hover:bg-white/10 hover:text-gray-300')}`}
+                                                                            >
+                                                                                {ext}
+                                                                            </button>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            </details>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                            
                                         </div>
                                     </motion.div>
                                 )}
@@ -580,13 +836,28 @@ export function WorkspaceLayout() {
 
                 {/* CHAT CONSOLE OVERLAY */}
                 {activeView === 'chat' && (
-                    <div className="absolute inset-0 z-50 bg-[#0B0B10] p-8 overflow-y-auto flex flex-col gap-6 font-mono text-xs">
-                        <div className="flex justify-between items-center mb-2 pb-4 border-b border-[#1E1E26]">
+                    <div 
+                        className="absolute inset-0 z-50 bg-[#0B0B10] p-8 overflow-y-auto flex flex-col gap-6 font-mono text-xs"
+                        style={chatOverlayDrag.style}
+                    >
+                        <div 
+                            {...chatOverlayDrag.headerProps}
+                            className="flex justify-between items-center mb-2 pb-4 border-b border-[#1E1E26] cursor-move select-none"
+                        >
                             <div>
-                                <h2 className="text-white font-bold tracking-widest text-sm font-mono">[ CHAT CONSOLE ]</h2>
+                                <div className="flex items-center gap-2">
+                                    <h2 className="text-white font-bold tracking-widest text-sm font-mono">[ CHAT CONSOLE ]</h2>
+                                    <span className="text-[10px] text-[#64748B] font-mono tracking-wider">[DRAGGABLE]</span>
+                                </div>
                                 <p className="text-[#64748B] text-xs font-mono mt-1">Diagnostic Multi-Persona Simulation</p>
                             </div>
-                            <button onClick={() => setActiveView(null)} className="text-xs font-bold text-[#A0AEC0] hover:text-white font-mono tracking-widest uppercase">CLOSE [x]</button>
+                            <button 
+                                data-no-drag
+                                onClick={() => setActiveView(null)} 
+                                className="text-xs font-bold text-[#A0AEC0] hover:text-white font-mono tracking-widest uppercase px-2 py-1 rounded bg-[#15151C] border border-[#2A2A35]"
+                            >
+                                CLOSE [x]
+                            </button>
                         </div>
 
                         {/* Persona Diagnostic Cards */}
@@ -626,13 +897,28 @@ export function WorkspaceLayout() {
 
                 {/* GLOBAL SEARCH OVERLAY */}
                 {activeView === 'search' && (
-                    <div className="absolute inset-0 z-50 bg-[#0B0B10] p-8 overflow-y-auto flex flex-col font-mono text-xs text-[#A0AEC0]">
-                        <div className="flex justify-between items-center mb-6 pb-4 border-b border-[#1E1E26]">
+                    <div 
+                        className="absolute inset-0 z-50 bg-[#0B0B10] p-8 overflow-y-auto flex flex-col font-mono text-xs text-[#A0AEC0]"
+                        style={searchOverlayDrag.style}
+                    >
+                        <div 
+                            {...searchOverlayDrag.headerProps}
+                            className="flex justify-between items-center mb-6 pb-4 border-b border-[#1E1E26] cursor-move select-none"
+                        >
                             <div>
-                                <h2 className="text-white font-bold tracking-widest text-sm font-mono">[ GLOBAL SEARCH ]</h2>
+                                <div className="flex items-center gap-2">
+                                    <h2 className="text-white font-bold tracking-widest text-sm font-mono">[ GLOBAL SEARCH ]</h2>
+                                    <span className="text-[10px] text-[#64748B] font-mono tracking-wider">[DRAGGABLE]</span>
+                                </div>
                                 <p className="text-[#64748B] text-xs font-mono mt-1">Cross-Vault Knowledge & Node Index</p>
                             </div>
-                            <button onClick={() => setActiveView(null)} className="text-xs font-bold text-[#A0AEC0] hover:text-white font-mono tracking-widest uppercase">CLOSE [x]</button>
+                            <button 
+                                data-no-drag
+                                onClick={() => setActiveView(null)} 
+                                className="text-xs font-bold text-[#A0AEC0] hover:text-white font-mono tracking-widest uppercase px-2 py-1 rounded bg-[#15151C] border border-[#2A2A35]"
+                            >
+                                CLOSE [x]
+                            </button>
                         </div>
                         <div className="text-[#A0AEC0] font-mono text-xs">Search query index and knowledge nodes across workspace.</div>
                     </div>
@@ -640,13 +926,28 @@ export function WorkspaceLayout() {
 
                 {/* MEMORY CONTEXT OVERLAY */}
                 {activeView === 'memory' && (
-                    <div className="absolute inset-0 z-50 bg-[#0B0B10] p-8 overflow-y-auto flex flex-col font-mono text-xs text-[#A0AEC0]">
-                        <div className="flex justify-between items-center mb-6 pb-4 border-b border-[#1E1E26]">
+                    <div 
+                        className="absolute inset-0 z-50 bg-[#0B0B10] p-8 overflow-y-auto flex flex-col font-mono text-xs text-[#A0AEC0]"
+                        style={memoryOverlayDrag.style}
+                    >
+                        <div 
+                            {...memoryOverlayDrag.headerProps}
+                            className="flex justify-between items-center mb-6 pb-4 border-b border-[#1E1E26] cursor-move select-none"
+                        >
                             <div>
-                                <h2 className="text-white font-bold tracking-widest text-sm font-mono">[ MEMORY CONTEXT TRACKER ]</h2>
+                                <div className="flex items-center gap-2">
+                                    <h2 className="text-white font-bold tracking-widest text-sm font-mono">[ MEMORY CONTEXT TRACKER ]</h2>
+                                    <span className="text-[10px] text-[#64748B] font-mono tracking-wider">[DRAGGABLE]</span>
+                                </div>
                                 <p className="text-[#64748B] text-xs font-mono mt-1">Active Neural Memory Buffer & Cognitive Vector States</p>
                             </div>
-                            <button onClick={() => setActiveView(null)} className="text-xs font-bold text-[#A0AEC0] hover:text-white font-mono tracking-widest uppercase">CLOSE [x]</button>
+                            <button 
+                                data-no-drag
+                                onClick={() => setActiveView(null)} 
+                                className="text-xs font-bold text-[#A0AEC0] hover:text-white font-mono tracking-widest uppercase px-2 py-1 rounded bg-[#15151C] border border-[#2A2A35]"
+                            >
+                                CLOSE [x]
+                            </button>
                         </div>
                         <div className="text-[#A0AEC0] font-mono text-xs">Tracking active neural memory buffer and cognitive vector states.</div>
                     </div>
@@ -655,10 +956,20 @@ export function WorkspaceLayout() {
         </div>
 
         {activeView === 'file-viewer' && activeFile && (
-            <div className="fixed inset-0 z-50 flex bg-[#0B0B10]">
+            <div 
+                className="fixed inset-0 z-50 flex bg-[#0B0B10] shadow-2xl"
+                style={fileViewerDrag.style}
+                onWheel={(e) => e.stopPropagation()}
+            >
                 {/* Left Panel (File Info) */}
                 <div className="w-[350px] border-r border-[#1E1E26] flex flex-col h-full font-mono text-xs">
-                    <div className="p-4 border-b border-[#1E1E26] font-bold text-white">[ FILE INFORMATION PANEL ]</div>
+                    <div 
+                        {...fileViewerDrag.headerProps}
+                        className="p-4 border-b border-[#1E1E26] font-bold text-white flex items-center justify-between cursor-move select-none"
+                    >
+                        <span>[ FILE INFORMATION PANEL ]</span>
+                        <span className="text-[10px] text-[#64748B] font-mono tracking-wider">[DRAG]</span>
+                    </div>
                     <div className="p-4 flex-1 overflow-y-auto flex flex-col gap-4">
                         
                         {/* BASIC INFO */}
@@ -692,16 +1003,26 @@ export function WorkspaceLayout() {
                     </div>
                 </div>
 
-                {/* Center Panel (Code View) */}
+                {/* Center Panel (Code View / Content Preview) */}
                 <div className="flex-1 flex flex-col bg-[#0B0B10] min-w-0">
-                    <div className="h-14 border-b border-[#1E1E26] flex items-center px-4 gap-6 text-xs font-bold text-[#E2E8F0] justify-between">
-                        <div className="cursor-pointer hover:text-[#00D2FF] whitespace-nowrap">[G] GRAPH VIEW</div>
-                        <div className="cursor-pointer hover:text-[#00D2FF] whitespace-nowrap">[F] GRAPH FILTERS</div>
-                        <div className="cursor-pointer hover:text-[#00D2FF] whitespace-nowrap">[O] OPTIONS</div>
-                        <div className="w-64 border border-[#1E1E26] rounded px-3 py-1 bg-[#15151C] text-[#A0AEC0] whitespace-nowrap hidden lg:block">
-                            [SEARCH] Search nodes, paths, risk:high...
+                    <div 
+                        {...fileViewerDrag.headerProps}
+                        className="h-14 border-b border-[#1E1E26] flex items-center px-4 gap-6 text-xs font-bold text-[#E2E8F0] justify-between cursor-move select-none"
+                    >
+                        <div className="flex items-center gap-6" data-no-drag>
+                            <div className="cursor-pointer hover:text-[#00D2FF] whitespace-nowrap">[G] GRAPH VIEW</div>
+                            <div className="cursor-pointer hover:text-[#00D2FF] whitespace-nowrap">[F] GRAPH FILTERS</div>
+                            <div 
+                                onClick={() => window.dispatchEvent(new CustomEvent('orion:toggle-settings'))}
+                                className="cursor-pointer hover:text-[#00D2FF] whitespace-nowrap"
+                            >
+                                [O] OPTIONS
+                            </div>
+                            <div className="w-64 border border-[#1E1E26] rounded px-3 py-1 bg-[#15151C] text-[#A0AEC0] whitespace-nowrap hidden lg:block">
+                                [SEARCH] Search nodes, paths, risk:high...
+                            </div>
                         </div>
-                        <div className="flex flex-row items-center gap-4 ml-auto pr-8">
+                        <div className="flex flex-row items-center gap-4 ml-auto pr-8" data-no-drag>
                             <button 
                                 onClick={() => setActiveView('files')} 
                                 className="text-[#A0AEC0] hover:text-[#00D2FF] font-bold text-xs whitespace-nowrap border border-[#2A2A35] bg-[#0B0B10] px-4 py-1.5 rounded-full"
@@ -717,10 +1038,11 @@ export function WorkspaceLayout() {
                         </div>
                     </div>
                     <div className="flex-1 overflow-y-auto p-4 relative">
-                        {activeFile.content.startsWith('data:image/') ? (
-                            <div className="flex items-center justify-center h-full w-full">
-                                <img src={activeFile.content} alt={activeFile.name} className="max-w-full max-h-full object-contain drop-shadow-2xl rounded-md" />
-                            </div>
+                        {activeFile.content?.startsWith('data:image/') || /\.(png|jpe?g|gif|webp|svg|ico|bmp|avif)$/i.test(activeFile.name) ? (
+                            <ImagePanZoomViewer 
+                                src={activeFile.content?.startsWith('data:image/') ? activeFile.content : (activeFile.content ? `data:image/png;base64,${activeFile.content}` : `file://${activeFile.path}`)} 
+                                alt={activeFile.name} 
+                            />
                         ) : (
                             <pre className="font-mono text-sm text-[#A0AEC0] overflow-hidden break-all whitespace-pre-wrap">
                                 {activeFile.content}
@@ -731,8 +1053,12 @@ export function WorkspaceLayout() {
 
                 {/* Right Panel (AI Stream) */}
                 <div className="w-[300px] border-l border-[#1E1E26] flex flex-col bg-[#0B0B10]">
-                    <div className="h-14 border-b border-[#1E1E26] flex items-center justify-end px-4">
+                    <div 
+                        {...fileViewerDrag.headerProps}
+                        className="h-14 border-b border-[#1E1E26] flex items-center justify-end px-4 cursor-move select-none"
+                    >
                         <button 
+                            data-no-drag
                             onClick={() => setActiveView('files')}
                             className="text-xs font-bold text-[#E2E8F0] border border-[#1E1E26] px-3 py-1 hover:border-[#00D2FF]"
                         >
@@ -802,10 +1128,21 @@ export function WorkspaceLayout() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[200] flex flex-col bg-[#0B0B10] p-12"
+            style={codeModalDrag.style}
           >
-            <div className="flex justify-between items-center mb-4">
-              <span className="text-cyan-400 font-mono text-sm tracking-widest uppercase">RAW FILE STREAM: {selectedNode.label}</span>
-              <button onClick={() => setCodeModalOpen(false)} className="text-gray-400 hover:text-white font-mono text-xs uppercase tracking-widest bg-white/5 border border-white/10 px-4 py-2 hover:bg-red-500/20 hover:text-red-400 transition-colors">
+            <div 
+              {...codeModalDrag.headerProps}
+              className="flex justify-between items-center mb-4 cursor-move select-none"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-cyan-400 font-mono text-sm tracking-widest uppercase">RAW FILE STREAM: {selectedNode.label}</span>
+                <span className="text-[10px] text-[#64748B] font-mono tracking-wider">[DRAGGABLE]</span>
+              </div>
+              <button 
+                data-no-drag
+                onClick={() => setCodeModalOpen(false)} 
+                className="text-gray-400 hover:text-white font-mono text-xs uppercase tracking-widest bg-white/5 border border-white/10 px-4 py-2 hover:bg-red-500/20 hover:text-red-400 transition-colors"
+              >
                 [CLOSE STREAM]
               </button>
             </div>
