@@ -1126,6 +1126,7 @@ function NeuralGraphDashboardInner() {
   const [isPhysicsFrozen, setIsPhysicsFrozen] = useState<boolean>(false);
   const [autoScale, setAutoScale] = useState<boolean>(false);
   const [isAboutModalOpen, setIsAboutModalOpen] = useState<boolean>(false);
+  const [enableGlassBlur, setEnableGlassBlur] = useState<boolean>(false);
 
   const handleResetCamera = () => {
     if (controlsRef.current) {
@@ -1171,6 +1172,7 @@ function NeuralGraphDashboardInner() {
     setShowDeps(true);
     setShowCodeDependencies(true);
     setHighlightDependencyEdges(true);
+    setEnableGlassBlur(false);
     if (typeof document !== 'undefined') {
       document.documentElement.style.fontSize = '100%';
       document.documentElement.style.setProperty('--app-font-scale', '100%');
@@ -2588,55 +2590,60 @@ function NeuralGraphDashboardInner() {
         </AnimatePresence>
 
         {/* 4TH COLUMN AI PANEL REMOVED (NOW INTEGRATED INTO LEFT SIDEBAR) */}
+        {/* 4TH COLUMN AI PANEL REMOVED (NOW INTEGRATED INTO LEFT SIDEBAR) */}
         <AnimatePresence>
           {isSettingsOpen && (
             <div 
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 select-none"
+              className={`fixed inset-0 z-50 flex items-center justify-center p-4 select-none ${
+                enableGlassBlur ? 'bg-black/40 backdrop-blur-md' : 'bg-black/70'
+              }`}
               onClick={(e) => {
                 if (e.target === e.currentTarget) setIsSettingsOpen(false);
               }}
             >
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: -20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: -20 }}
-                className="relative w-[520px] max-w-[95vw] max-h-[85vh] bg-[#0C0C18]/95 border border-purple-500/30 rounded-2xl shadow-[0_0_40px_rgba(168,85,247,0.2)] flex flex-col overflow-hidden font-mono -translate-y-6"
-              >
-                {/* Header */}
-                <div className="flex items-center justify-between p-4 border-b border-purple-500/20 bg-[#0F0F1A] shrink-0">
-                  <span className="text-[13px] font-mono font-bold tracking-widest text-cyan-400">[ PREMIUM SETTINGS MATRIX ]</span>
-                  <button onClick={() => setIsSettingsOpen(false)} className="text-zinc-400 hover:text-red-400 font-mono text-[13px] px-2 py-1 border border-zinc-800 hover:border-red-500/40 rounded bg-zinc-900 transition-colors">[x]</button>
-                </div>
-
-                {/* TAB NAVIGATION HEADER */}
-                <div className="flex items-center gap-2 px-4 py-3 bg-[#0B0B14] border-b border-purple-500/10 overflow-x-auto custom-scrollbar shrink-0">
-                  {(['APPEARANCE', 'SYSTEM', 'SPARK_AI'] as const).map((tab) => (
-                    <button
-                      key={tab}
-                      onClick={() => setSettingsTab(tab)}
-                      className={`px-3 py-1.5 text-[11px] font-mono font-bold tracking-widest whitespace-nowrap transition-colors ${settingsTab === tab ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-zinc-500 hover:text-zinc-300'}`}
-                    >
-                      [ {tab === 'APPEARANCE' ? 'APPEARANCE' : tab === 'SYSTEM' ? 'SYSTEM' : 'SPARK AI'} ]
-                    </button>
-                  ))}
+              <div className="relative w-[560px] max-w-[95vw] h-[590px] bg-[#0C0C18]/95 border border-purple-500/30 rounded-2xl shadow-[0_0_40px_rgba(168,85,247,0.2)] flex flex-col overflow-hidden font-mono mt-8">
+                {/* Fixed Header */}
+                <div className="shrink-0 flex items-center justify-between px-6 py-3.5 border-b border-white/10 bg-[#0E0E1C]">
+                  <span className="text-xs font-bold tracking-wider text-cyan-400">[ PREMIUM SETTINGS MATRIX ]</span>
                   <button
-                    onClick={() => {
-                      setIsAboutModalOpen(true);
-                      setIsSettingsOpen(false);
-                    }}
-                    className="px-3 py-1.5 text-[11px] font-mono font-bold tracking-widest whitespace-nowrap text-purple-400 hover:text-purple-300 ml-auto border border-purple-500/30 rounded bg-purple-950/20 transition-all hover:border-purple-400 hover:bg-purple-900/30"
+                    onClick={() => setIsSettingsOpen(false)}
+                    className="w-6 h-6 rounded-md hover:bg-white/10 text-zinc-400 hover:text-white flex items-center justify-center text-xs transition-colors"
                   >
-                    [ ABOUT ORION-X ]
+                    ✕
                   </button>
                 </div>
 
-                {/* Scrollable Matrix */}
-                <div className="flex-1 overflow-y-auto max-h-[85vh] p-2 bg-[#0C0C18] custom-scrollbar">
+                {/* Fixed Tab Ribbon */}
+                <div className="shrink-0 flex items-center justify-between px-6 py-2 border-b border-white/5 bg-[#090913] text-[10px]">
+                  {(['APPEARANCE', 'SYSTEM', 'SPARK AI', 'ABOUT ORION-X'] as const).map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => {
+                        if (tab === 'ABOUT ORION-X') {
+                          setIsSettingsOpen(false);
+                          setIsAboutModalOpen(true);
+                        } else {
+                          setSettingsTab(tab === 'SPARK AI' ? 'SPARK_AI' : tab);
+                        }
+                      }}
+                      className={`px-2 py-1 rounded transition-colors ${
+                        (tab === 'SPARK AI' ? settingsTab === 'SPARK_AI' : settingsTab === tab) && tab !== 'ABOUT ORION-X'
+                          ? 'text-cyan-400 font-bold border-b-2 border-cyan-400'
+                          : 'text-zinc-500 hover:text-zinc-300'
+                      }`}
+                    >
+                      [ {tab} ]
+                    </button>
+                  ))}
+                </div>
+
+                {/* Scrollable Tab Body (prevents modal from stretching upwards) */}
+                <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
                   {/* DYNAMIC TAB RENDER CONTENT */}
-                  <div className="p-4 grid grid-cols-2 gap-4 bg-[#0C0C18]">
+                  <div className="grid grid-cols-2 gap-4">
                   {settingsTab === 'APPEARANCE' && (
                     <>
-                      <div className="flex flex-col gap-1">
+                      <div className="flex flex-col gap-1 col-span-2">
                         <span className="text-[10px] font-mono text-zinc-500">Theme Engine</span>
                         <div className="flex gap-2">
                           <button
@@ -2659,26 +2666,53 @@ function NeuralGraphDashboardInner() {
                           </button>
                         </div>
                       </div>
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[10px] font-mono text-zinc-500">UI Density</span>
-                        <div className="flex gap-2">
-                          {['compact', 'standard', 'spacious'].map(t => <button key={t} onClick={() => setUiDensity(t as any)} className={`px-2 py-1 text-[10px] font-mono uppercase rounded border transition-colors ${uiDensity === t ? 'bg-cyan-900/30 border-cyan-500 text-white' : 'bg-zinc-900 border-zinc-800 text-zinc-400'}`}>[ {t} ]</button>)}
+
+                      {/* REDESIGNED UI DENSITY SELECTOR */}
+                      <div className="flex flex-col gap-1.5 py-2 border-b border-white/5 col-span-2">
+                        <span className="text-xs font-mono text-zinc-300">UI Density</span>
+                        <div className="inline-flex p-1 rounded-xl bg-[#080811] border border-white/10 gap-1 w-full">
+                          {(['COMPACT', 'STANDARD', 'SPACIOUS'] as const).map((mode) => (
+                            <button
+                              key={mode}
+                              type="button"
+                              onClick={() => setUiDensity(mode.toLowerCase())}
+                              className={`flex-1 py-1.5 text-[10px] font-mono rounded-lg font-semibold tracking-wider transition-all ${
+                                uiDensity.toUpperCase() === mode
+                                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/50 shadow-[0_0_10px_rgba(6,182,212,0.3)]'
+                                  : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
+                              }`}
+                            >
+                              {mode}
+                            </button>
+                          ))}
                         </div>
                       </div>
-                      <div className="flex items-center justify-between py-2 border-b border-white/5">
+
+                      {/* GLOBAL GLASSMORPHISM / BACKDROP BLUR TOGGLE */}
+                      <div className="flex items-center justify-between py-2 border-b border-white/5 col-span-2">
+                        <div>
+                          <span className="text-xs font-mono text-zinc-200 block">Glassmorphism / Backdrop Blur</span>
+                          <span className="text-[10px] font-mono text-zinc-500">Toggle translucent background blurs across all modals</span>
+                        </div>
+                        <CyberToggle checked={enableGlassBlur} onChange={setEnableGlassBlur} />
+                      </div>
+
+                      <div className="flex items-center justify-between py-2 border-b border-white/5 col-span-2">
                         <div>
                           <span className="text-xs font-mono text-zinc-200 block">Glow & Animations</span>
                           <span className="text-[10px] font-mono text-zinc-500">Volumetric node bloom and pulse effects</span>
                         </div>
                         <CyberToggle checked={glowEnabled} onChange={setGlowEnabled} />
                       </div>
-                      <div className="flex items-center justify-between py-2 border-b border-white/5">
+
+                      <div className="flex items-center justify-between py-2 border-b border-white/5 col-span-2">
                         <div>
                           <span className="text-xs font-mono text-zinc-200 block">Background Particle Grid</span>
                           <span className="text-[10px] font-mono text-zinc-500">Ambient 3D starfield & matrix grid</span>
                         </div>
                         <CyberToggle checked={starGridActive} onChange={setStarGridActive} />
                       </div>
+
                       <div className="flex flex-col gap-1 col-span-2">
                         <span className="text-[10px] font-mono text-zinc-500">Font Scaling ({fontScale}%)</span>
                         <input
@@ -2698,6 +2732,7 @@ function NeuralGraphDashboardInner() {
                           className="w-full accent-cyan-500"
                         />
                       </div>
+
                       <div className="col-span-2 pt-3 mt-1 border-t border-[#1E1E26] flex items-center justify-between">
                         <div className="flex flex-col">
                           <span className="text-[11px] font-mono font-bold text-zinc-300">Reset Appearance</span>
@@ -2711,6 +2746,7 @@ function NeuralGraphDashboardInner() {
                             setGlowEnabled(true);
                             setStarGridActive(true);
                             setFontScale(100);
+                            setEnableGlassBlur(false);
                             if (typeof document !== 'undefined') {
                               document.documentElement.style.fontSize = '100%';
                               document.documentElement.style.setProperty('--app-font-scale', '100%');
@@ -2949,7 +2985,7 @@ function NeuralGraphDashboardInner() {
                   )}
                 </div>
               </div>
-            </motion.div>
+            </div>
           </div>
         )}
       </AnimatePresence>
@@ -3058,7 +3094,9 @@ function NeuralGraphDashboardInner() {
 
         {/* Centered 9:16 Cyberpunk Glassmorphic About & Instructions Modal */}
         {isAboutModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm px-4 pt-14 pb-8 overflow-hidden">
+          <div className={`fixed inset-0 z-[100] flex items-center justify-center px-4 pt-14 pb-8 overflow-hidden select-none ${
+            enableGlassBlur ? 'bg-black/40 backdrop-blur-md' : 'bg-black/75'
+          }`}>
             <div className="relative w-[480px] h-[820px] max-h-[85vh] max-w-[95vw] bg-[#0B0B14]/95 border border-purple-500/30 rounded-3xl shadow-[0_0_50px_rgba(168,85,247,0.25)] flex flex-col overflow-hidden font-mono select-none">
               {/* Pinned Header Bar */}
               <div className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-white/10 bg-[#0E0E1A] z-10">
