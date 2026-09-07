@@ -94,6 +94,41 @@ export function initializeWorkspaceController(): void {
     }
   });
 
+  // Feature 3: Inline Git Diff Handler
+  if (ipcMain && typeof ipcMain.removeHandler === 'function') {
+    ipcMain.removeHandler('workspace:getGitDiff');
+  }
+
+  ipcMain.handle('workspace:getGitDiff', async (_event, filePath: string) => {
+    try {
+      if (!filePath) return { success: false, error: 'Empty file path', diff: '' };
+      const { exec } = require('child_process');
+      const util = require('util');
+      const execAsync = util.promisify(exec);
+      const absPath = path.resolve(filePath);
+      const fileDir = path.dirname(absPath);
+
+      // Run git diff HEAD -- <path>
+      try {
+        const { stdout } = await execAsync(`git diff HEAD -- "${absPath}"`, { cwd: fileDir });
+        if (stdout && stdout.trim()) {
+          return { success: true, diff: stdout };
+        }
+      } catch (headErr) {
+        // Fallback to working tree diff
+      }
+
+      try {
+        const { stdout } = await execAsync(`git diff -- "${absPath}"`, { cwd: fileDir });
+        return { success: true, diff: stdout || '' };
+      } catch (diffErr: any) {
+        return { success: false, error: diffErr?.message || 'Git diff unavailable', diff: '' };
+      }
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Failed to generate git diff', diff: '' };
+    }
+  });
+
   // Create a new thread
   ipcMain.handle('workspace:createThread', async (_event, ...args: any[]) => {
     let id = '';
@@ -219,13 +254,14 @@ export function initializeWorkspaceController(): void {
 
         const targetClonePath = path.join(downloadBase, repoName);
 
-        // Natively pull down the remote repository
+        // Natively pull down the remote repository exhaustively without shallow limits
         try {
-          console.log(`[WorkspaceController] Executing dynamic clone: git clone ${targetUrl} ${targetClonePath}`);
-          await execAsync(`git clone ${targetUrl} "${targetClonePath}"`);
+          const cloneCmd = `git clone --recursive --no-single-branch ${targetUrl} "${targetClonePath}"`;
+          console.log(`[WorkspaceController] Executing exhaustive clone: ${cloneCmd}`);
+          await execAsync(cloneCmd);
         } catch (gitErr) {
           console.warn(`[WorkspaceController] Standard 'git' command failed. Falling back to absolute path execution...`, gitErr);
-          await execAsync(`"C:\\Program Files\\Git\\cmd\\git.exe" clone ${targetUrl} "${targetClonePath}"`);
+          await execAsync(`"C:\\Program Files\\Git\\cmd\\git.exe" clone --recursive --no-single-branch ${targetUrl} "${targetClonePath}"`);
         }
 
         // Ensure our active pointer aligns directly with the new local folder

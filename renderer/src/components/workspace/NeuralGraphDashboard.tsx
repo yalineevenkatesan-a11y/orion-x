@@ -197,7 +197,13 @@ function PhysicsGraph({
   searchFilter = '',
   enableNodePinning = false,
   pinnedNodeIds,
-  enableComplexitySizing = false
+  enableComplexitySizing = false,
+  enableBlastRadius = false,
+  blastTargetId = null,
+  blastAffectedIds,
+  enableLassoSelect = false,
+  lassoSelectedIds,
+  enableThermalShader = false
 }: { 
   nodes: GraphNode[], 
   links: GraphLink[], 
@@ -219,7 +225,13 @@ function PhysicsGraph({
   searchFilter?: string,
   enableNodePinning?: boolean,
   pinnedNodeIds?: Set<string>,
-  enableComplexitySizing?: boolean
+  enableComplexitySizing?: boolean,
+  enableBlastRadius?: boolean,
+  blastTargetId?: string | null,
+  blastAffectedIds?: Set<string>,
+  enableLassoSelect?: boolean,
+  lassoSelectedIds?: Set<string>,
+  enableThermalShader?: boolean
 }) {
   const nodeRefs = useRef<{ [key: string]: THREE.Mesh | null }>({});
   const { useFrame, useThree } = require('@react-three/fiber');
@@ -244,13 +256,15 @@ function PhysicsGraph({
   }, [nodes]);
 
   useFrame(() => {
+    const speedFactor = Math.max(1, Math.min(30, animSpeed));
+
     if (isTreeLayout) {
       // Smooth spring animation to tree slots
       nodes.forEach((n: any) => {
         if (n.targetX !== undefined && n.targetY !== undefined && n.targetZ !== undefined) {
-          n.x = (n.x ?? 0) + (n.targetX - (n.x ?? 0)) * 0.08;
-          n.y = (n.y ?? 0) + (n.targetY - (n.y ?? 0)) * 0.08;
-          n.z = (n.z ?? 0) + (n.targetZ - (n.z ?? 0)) * 0.08;
+          n.x = (n.x ?? 0) + (n.targetX - (n.x ?? 0)) * (0.05 * speedFactor);
+          n.y = (n.y ?? 0) + (n.targetY - (n.y ?? 0)) * (0.05 * speedFactor);
+          n.z = (n.z ?? 0) + (n.targetZ - (n.z ?? 0)) * (0.05 * speedFactor);
           if (nodeRefs.current[n.id]) {
             nodeRefs.current[n.id]!.position.set(n.x, n.y, n.z);
           }
@@ -344,9 +358,9 @@ function PhysicsGraph({
       n.vy = (n.vy ?? 0) - n.y * 0.003;
       n.vz = (n.vz ?? 0) - n.z * 0.003;
 
-      n.x += (n.vx ?? 0) * ALPHA * animSpeed;
-      n.y += (n.vy ?? 0) * ALPHA * animSpeed;
-      n.z += (n.vz ?? 0) * ALPHA * animSpeed;
+      n.x += (n.vx ?? 0) * ALPHA * speedFactor;
+      n.y += (n.vy ?? 0) * ALPHA * speedFactor;
+      n.z += (n.vz ?? 0) * ALPHA * speedFactor;
 
       n.vx = (n.vx ?? 0) * DAMPING;
       n.vy = (n.vy ?? 0) * DAMPING;
@@ -357,6 +371,13 @@ function PhysicsGraph({
       }
     });
   });
+
+  const getThermalColor = (loc: number) => {
+    if (loc < 60) return '#38BDF8';   // Low: Cool Cyan
+    if (loc < 180) return '#34D399';  // Normal: Emerald
+    if (loc < 400) return '#FBBF24';  // Medium: Amber
+    return '#EF4444';                 // High: Volcanic Red
+  };
 
   const memoizedNodes = useMemo(() => {
     const safeNodes = Array.isArray(nodes) ? nodes : [];
@@ -370,22 +391,45 @@ function PhysicsGraph({
       const isMatch = n.engineState === 'SEARCH_MATCH';
       const isUnmatched = n.engineState === 'UNMATCHED';
 
-      const color = isSelected ? '#00D2FF' : (n.health === 'critical' ? '#ef4444' : n.health === 'warning' ? '#eab308' : '#22c55e');
+      const loc = n.loc || (n as any).LOC || (n.fileContent ? n.fileContent.split('\n').length : 20);
+
+      // Feature 4: Codebase Complexity Thermal Heatmap Shader
+      let color = isSelected ? '#00D2FF' : (n.health === 'critical' ? '#ef4444' : n.health === 'warning' ? '#eab308' : '#22c55e');
+      if (enableThermalShader) {
+        color = isSelected ? '#00D2FF' : getThermalColor(loc);
+      }
       
       // Feature 4: Complexity-Weighted Node Sizing (Technical Debt Spheres)
       const baseRadius = (isSelected ? (n.isDir ? 3.6 : 2.4) : (n.isDir ? 1.8 : 1.2)) * (nodeSize * 0.6);
-      const loc = n.loc || (n as any).LOC || (n.fileContent ? n.fileContent.split('\n').length : 20);
       const complexityWeight = enableComplexitySizing ? Math.min(3.5, Math.max(0.8, Math.log10(Math.max(loc, 10)))) : 1.0;
       const radius = baseRadius * complexityWeight;
 
-      // Feature 2: Spatial Search Heatmap Beacons
-      // Matching nodes retain full opacity with elevated emissive scale (2.0)
-      // Non-matching nodes drop to opacity: 0.1 and disable billboard text labels
+      // Feature 1: Blast Radius / Impact Analysis
+      const isBlastActive = Boolean(enableBlastRadius && blastTargetId);
+      const isBlastTarget = isBlastActive && n.id === blastTargetId;
+      const isBlastAffected = isBlastActive && (blastAffectedIds?.has(n.id) ?? false);
+
       let opacity: number;
       let emissiveInt: number;
       let showBillboardLabel: boolean;
 
-      if (isHeatmapActive) {
+      if (isBlastActive) {
+        if (isBlastTarget) {
+          color = '#F43F5E';
+          opacity = 1.0;
+          emissiveInt = 2.5;
+          showBillboardLabel = fileLabels;
+        } else if (isBlastAffected) {
+          color = '#F59E0B';
+          opacity = 1.0;
+          emissiveInt = 2.0;
+          showBillboardLabel = fileLabels;
+        } else {
+          opacity = 0.08;
+          emissiveInt = 0.02;
+          showBillboardLabel = false;
+        }
+      } else if (isHeatmapActive) {
         if (isMatch || isSelected) {
           opacity = 1.0;
           emissiveInt = 2.0;
@@ -420,6 +464,27 @@ function PhysicsGraph({
             opacity={opacity}
             wireframe={isMatch && !isHeatmapActive}
           />
+          {/* Feature 1: Blast Target Magenta Pulsing Ring */}
+          {isBlastTarget && (
+            <mesh scale={[radius * 1.6, radius * 1.6, radius * 1.6]}>
+              <ringGeometry args={[1, 1.25, 32]} />
+              <meshBasicMaterial color="#F43F5E" side={THREE.DoubleSide} transparent opacity={0.9} />
+            </mesh>
+          )}
+          {/* Feature 1: Blast Affected Amber Glowing Ring */}
+          {isBlastAffected && (
+            <mesh scale={[radius * 1.35, radius * 1.35, radius * 1.35]}>
+              <ringGeometry args={[1, 1.2, 32]} />
+              <meshBasicMaterial color="#F59E0B" side={THREE.DoubleSide} transparent opacity={0.85} />
+            </mesh>
+          )}
+          {/* Feature 2: Holographic Lasso Cyan Selection Ring */}
+          {lassoSelectedIds?.has(n.id) && (
+            <mesh scale={[radius * 1.4, radius * 1.4, radius * 1.4]}>
+              <ringGeometry args={[1, 1.2, 32]} />
+              <meshBasicMaterial color="#22D3EE" side={THREE.DoubleSide} transparent opacity={0.9} />
+            </mesh>
+          )}
           {/* Feature 1: Git Status Pulse Ambient Outer Ring */}
           {enableGitPulse && (n.isGitModified || n.git?.status === 'modified' || n.git?.status === 'added') && (
             <mesh scale={[radius * 1.3, radius * 1.3, radius * 1.3]}>
@@ -444,7 +509,7 @@ function PhysicsGraph({
         </mesh>
       );
     });
-  }, [nodes, onSelectNode, onContextMenu, nodeSize, fileLabels, glowEnabled, fontScale, enableGitPulse, enableSearchHeatmap, searchFilter, enableNodePinning, pinnedNodeIds, enableComplexitySizing]);
+  }, [nodes, onSelectNode, onContextMenu, nodeSize, fileLabels, glowEnabled, fontScale, enableGitPulse, enableSearchHeatmap, searchFilter, enableNodePinning, pinnedNodeIds, enableComplexitySizing, enableBlastRadius, blastTargetId, blastAffectedIds, enableLassoSelect, lassoSelectedIds, enableThermalShader]);
 
   const memoizedLinks = useMemo(() => {
     const safeLinks = Array.isArray(links) ? links : [];
@@ -1647,6 +1712,65 @@ function NeuralGraphDashboardInner() {
     setSaveStatusMsg('');
   }, [selectedNode?.id, activeFileNode?.id]);
 
+  // --- 4 ADVANCED LAB ENGINES (ALL DEFAULT FALSE) ---
+  const [enableBlastRadius, setEnableBlastRadius] = useState<boolean>(false);
+  const [enableLassoSelect, setEnableLassoSelect] = useState<boolean>(false);
+  const [enableInlineDiff, setEnableInlineDiff] = useState<boolean>(false);
+  const [enableThermalShader, setEnableThermalShader] = useState<boolean>(false);
+
+  // Active interactive state buffers
+  const [blastTargetId, setBlastTargetId] = useState<string | null>(null);
+  const [lassoSelectedIds, setLassoSelectedIds] = useState<Set<string>>(new Set());
+  const [isolatedClusterIds, setIsolatedClusterIds] = useState<Set<string> | null>(null);
+
+  // 2D Marquee Selection Bounds & Container Ref
+  const [isMarqueeDragging, setIsMarqueeDragging] = useState<boolean>(false);
+  const [marqueeStart, setMarqueeStart] = useState<{ x: number; y: number } | null>(null);
+  const [marqueeCurrent, setMarqueeCurrent] = useState<{ x: number; y: number } | null>(null);
+  const graphCanvasContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // Git Diff state in Raw File Content Viewer
+  const [showViewerDiff, setShowViewerDiff] = useState<boolean>(false);
+  const [viewerGitDiff, setViewerGitDiff] = useState<string>('');
+  const [isLoadingViewerDiff, setIsLoadingViewerDiff] = useState<boolean>(false);
+
+  // Glowing Red Overdrive Master Switch
+  const [isOverdriveActive, setIsOverdriveActive] = useState<boolean>(false);
+  const animationSpeed = animSpeed;
+  const setAnimationSpeed = useCallback((speed: number) => {
+    setAnimSpeed(speed);
+    setAnimationVelocity(speed);
+  }, []);
+
+  const handleToggleOverdrive = (active: boolean) => {
+    setIsOverdriveActive(active);
+    if (active) {
+      setAnimationSpeed(30);
+      setNodeSize(4.5);
+      setGlowEnabled(true);
+      setEdgeOpacity(0.85);
+      setShowCodeDependencies(true);
+      setHighlightDependencyEdges(true);
+      setEnableBlastRadius(true);
+      setEnableLassoSelect(true);
+      setEnableInlineDiff(true);
+      setEnableThermalShader(true);
+      setEnableGitPulse?.(true);
+      setEnableSearchHeatmap?.(true);
+      setEnableRadarMinimap?.(true);
+      setEnableAutonomousAuditor?.(true);
+      setEnableComplexitySizing?.(true);
+    } else {
+      setAnimationSpeed(1);
+      setNodeSize(3.8);
+      setEdgeOpacity(0.35);
+      setEnableBlastRadius(false);
+      setEnableLassoSelect(false);
+      setEnableInlineDiff(false);
+      setEnableThermalShader(false);
+    }
+  };
+
   const playCyberTone = useCallback((freq = 440, type: OscillatorType = 'sine', duration = 0.05) => {
     if (!enableCyberSfx) return;
     try {
@@ -1776,6 +1900,15 @@ function NeuralGraphDashboardInner() {
     setEnableComplexitySizing(false);
     setEnableVaultHistory(false);
     setIsVaultSwitcherOpen(false);
+    setEnableBlastRadius(false);
+    setBlastTargetId(null);
+    setEnableLassoSelect(false);
+    setLassoSelectedIds(new Set());
+    setIsolatedClusterIds(null);
+    setEnableInlineDiff(false);
+    setShowViewerDiff(false);
+    setEnableThermalShader(false);
+    setIsOverdriveActive(false);
     if (typeof document !== 'undefined') {
       document.documentElement.style.fontSize = '100%';
       document.documentElement.style.setProperty('--app-font-scale', '100%');
@@ -2406,7 +2539,20 @@ function NeuralGraphDashboardInner() {
   }) || [];
 
   const visibleGraphData = useMemo(() => {
-    if (!focusedParentId) return { nodes: finalNodes, links: finalLinks };
+    let baseNodes = finalNodes;
+    let baseLinks = finalLinks;
+
+    if (isolatedClusterIds && isolatedClusterIds.size > 0) {
+      const filteredNodes = baseNodes.filter((n: any) => isolatedClusterIds.has(n.id));
+      const filteredLinks = baseLinks.filter((l: any) => {
+        const s = typeof l.source === 'object' ? l.source.id : l.source;
+        const t = typeof l.target === 'object' ? l.target.id : l.target;
+        return isolatedClusterIds.has(s) && isolatedClusterIds.has(t);
+      });
+      return { nodes: filteredNodes, links: filteredLinks };
+    }
+
+    if (!focusedParentId) return { nodes: baseNodes, links: baseLinks };
 
     const connectedIds = new Set<string>([focusedParentId]);
     let added = true;
@@ -2431,7 +2577,130 @@ function NeuralGraphDashboardInner() {
     });
 
     return { nodes: filteredNodes, links: filteredLinks };
-  }, [nodes, links, finalNodes, finalLinks, focusedParentId]);
+  }, [nodes, links, finalNodes, finalLinks, focusedParentId, isolatedClusterIds]);
+
+  // Feature 1: Impact Blast Radius - Downstream Transitive Imports BFS
+  const blastAffectedIds = useMemo(() => {
+    if (!enableBlastRadius || !blastTargetId) return new Set<string>();
+    const affected = new Set<string>();
+    const queue: string[] = [blastTargetId];
+    const allLinks = visibleGraphData.links || [];
+
+    while (queue.length > 0) {
+      const curr = queue.shift()!;
+      for (const l of allLinks) {
+        const sId = typeof l.source === 'object' ? (l.source as any).id : l.source;
+        const tId = typeof l.target === 'object' ? (l.target as any).id : l.target;
+        // Importer is source, imported module is target
+        if (tId === curr && sId && sId !== blastTargetId && !affected.has(sId)) {
+          affected.add(sId);
+          queue.push(sId);
+        }
+      }
+    }
+    return affected;
+  }, [enableBlastRadius, blastTargetId, visibleGraphData.links]);
+
+  // Feature 2: Holographic Lasso / Box Selection Metrics Aggregator
+  const lassoClusterMetrics = useMemo(() => {
+    if (!lassoSelectedIds || lassoSelectedIds.size === 0) return null;
+    const selectedNodes = visibleGraphData.nodes.filter(n => lassoSelectedIds.has(n.id));
+    let totalLoc = 0;
+    const languagesSet = new Set<string>();
+
+    selectedNodes.forEach((n: any) => {
+      const loc = n.loc || (n as any).LOC || (n.fileContent ? n.fileContent.split('\n').length : 0) || 15;
+      totalLoc += loc;
+      const name = n.label || n.name || n.path || '';
+      const ext = name.includes('.') ? name.split('.').pop()?.toUpperCase() : (n.isDir ? 'DIR' : 'SOURCE');
+      if (ext) languagesSet.add(ext);
+    });
+
+    return {
+      count: selectedNodes.length,
+      totalLoc,
+      languages: Array.from(languagesSet).slice(0, 5),
+    };
+  }, [lassoSelectedIds, visibleGraphData.nodes]);
+
+  // Finish 2D Marquee Selection by Projecting 3D Coordinates into 2D Screen Space
+  const finishMarqueeSelection = useCallback((start: { x: number; y: number }, end: { x: number; y: number }) => {
+    setIsMarqueeDragging(false);
+    setMarqueeStart(null);
+    setMarqueeCurrent(null);
+
+    const dx = Math.abs(end.x - start.x);
+    const dy = Math.abs(end.y - start.y);
+    if (dx < 5 && dy < 5) return; // Ignore accidental tiny clicks
+
+    const minX = Math.min(start.x, end.x);
+    const maxX = Math.max(start.x, end.x);
+    const minY = Math.min(start.y, end.y);
+    const maxY = Math.max(start.y, end.y);
+
+    if (!graphCanvasContainerRef.current || !cameraRef.current) return;
+    const rect = graphCanvasContainerRef.current.getBoundingClientRect();
+    const width = rect.width;
+    const height = rect.height;
+    const camera = cameraRef.current;
+
+    const selectedIds = new Set<string>();
+    visibleGraphData.nodes.forEach((n: any) => {
+      if (n.x !== undefined && n.y !== undefined && n.z !== undefined) {
+        const v = new THREE.Vector3(n.x, n.y, n.z);
+        v.project(camera);
+        // v.x and v.y are in NDC [-1, 1]
+        const screenX = ((v.x + 1) / 2) * width;
+        const screenY = ((-v.y + 1) / 2) * height;
+        if (v.z < 1.0) { // Node is in front of camera
+          if (screenX >= minX && screenX <= maxX && screenY >= minY && screenY <= maxY) {
+            selectedIds.add(n.id);
+          }
+        }
+      }
+    });
+
+    setLassoSelectedIds(selectedIds);
+  }, [visibleGraphData.nodes]);
+
+  // Global mouseup listener for marquee drag
+  useEffect(() => {
+    if (!isMarqueeDragging) return;
+    const handleGlobalMouseUp = (e: MouseEvent) => {
+      if (graphCanvasContainerRef.current && marqueeStart) {
+        const rect = graphCanvasContainerRef.current.getBoundingClientRect();
+        const end = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        finishMarqueeSelection(marqueeStart, end);
+      } else {
+        setIsMarqueeDragging(false);
+        setMarqueeStart(null);
+        setMarqueeCurrent(null);
+      }
+    };
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
+  }, [isMarqueeDragging, marqueeStart, finishMarqueeSelection]);
+
+  // Feature 3: Auto-refresh Git diff when selected node changes
+  useEffect(() => {
+    if (showViewerDiff && enableInlineDiff) {
+      const targetPath = selectedNode?.path || activeFileNode?.path || selectedNode?.id || '';
+      if (!targetPath) return;
+      setIsLoadingViewerDiff(true);
+      const api = (window as any).electron?.workspace?.getGitDiff 
+        || (window as any).electronAPI?.workspace?.getGitDiff 
+        || (window as any).electron?.getGitDiff;
+      if (api) {
+        api(targetPath)
+          .then((res: any) => setViewerGitDiff(res?.diff || res || ''))
+          .catch((err: any) => setViewerGitDiff(`Error: ${err?.message || err}`))
+          .finally(() => setIsLoadingViewerDiff(false));
+      } else {
+        setIsLoadingViewerDiff(false);
+        setViewerGitDiff('');
+      }
+    }
+  }, [selectedNode?.path, activeFileNode?.path, selectedNode?.id, showViewerDiff, enableInlineDiff]);
 
   // Breadth/depth calculation for tree target coordinates:
   useEffect(() => {
@@ -3170,7 +3439,35 @@ function NeuralGraphDashboardInner() {
               </div>
             </div>
           ) : (
-            <>
+            <div 
+              ref={graphCanvasContainerRef}
+              className={`w-full h-full relative ${isMarqueeDragging ? 'cursor-crosshair' : ''}`}
+              onMouseDown={(e) => {
+                if (!enableLassoSelect) return;
+                if (e.shiftKey && e.button === 0) {
+                  if (!graphCanvasContainerRef.current) return;
+                  const rect = graphCanvasContainerRef.current.getBoundingClientRect();
+                  const startPt = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+                  setIsMarqueeDragging(true);
+                  setMarqueeStart(startPt);
+                  setMarqueeCurrent(startPt);
+                  e.preventDefault();
+                }
+              }}
+              onMouseMove={(e) => {
+                if (!isMarqueeDragging || !marqueeStart) return;
+                if (!graphCanvasContainerRef.current) return;
+                const rect = graphCanvasContainerRef.current.getBoundingClientRect();
+                setMarqueeCurrent({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+              }}
+              onMouseUp={() => {
+                if (!isMarqueeDragging || !marqueeStart || !marqueeCurrent) {
+                  if (isMarqueeDragging) setIsMarqueeDragging(false);
+                  return;
+                }
+                finishMarqueeSelection(marqueeStart, marqueeCurrent);
+              }}
+            >
               {nodes.length > 0 && Canvas && OrbitControls && (
                 <Canvas
                   camera={{ position: [0, 0, 450], fov: 60, near: 0.1, far: 5000 }}
@@ -3203,7 +3500,7 @@ function NeuralGraphDashboardInner() {
                 >
                   <ambientLight intensity={0.5} />
                   <pointLight position={[100, 100, 100]} intensity={1} />
-                  <OrbitControls ref={controlsRef} enableDamping dampingFactor={0.05} target={[0, 0, 0]} maxDistance={2500} />
+                  <OrbitControls ref={controlsRef} enabled={!isMarqueeDragging} enableDamping dampingFactor={0.05} target={[0, 0, 0]} maxDistance={2500} />
                   <CameraSync cameraRef={cameraRef} />
                   <StarfieldParticleGrid animSpeed={animSpeed} glowEnabled={glowEnabled} showParticleGrid={starGridActive} />
                   <PhysicsGraph
@@ -3228,8 +3525,117 @@ function NeuralGraphDashboardInner() {
                     enableNodePinning={enableNodePinning}
                     pinnedNodeIds={pinnedNodeIds}
                     enableComplexitySizing={enableComplexitySizing}
+                    enableBlastRadius={enableBlastRadius}
+                    blastTargetId={blastTargetId}
+                    blastAffectedIds={blastAffectedIds}
+                    enableLassoSelect={enableLassoSelect}
+                    lassoSelectedIds={lassoSelectedIds}
+                    enableThermalShader={enableThermalShader}
                   />
                 </Canvas>
+              )}
+
+              {/* 2D Marquee Selection Boundary Box */}
+              {isMarqueeDragging && marqueeStart && marqueeCurrent && (
+                <div
+                  className="absolute pointer-events-none border border-cyan-400 bg-cyan-400/10 z-40 rounded-sm shadow-[0_0_15px_rgba(6,182,212,0.3)] backdrop-blur-[1px]"
+                  style={{
+                    left: Math.min(marqueeStart.x, marqueeCurrent.x),
+                    top: Math.min(marqueeStart.y, marqueeCurrent.y),
+                    width: Math.abs(marqueeCurrent.x - marqueeStart.x),
+                    height: Math.abs(marqueeCurrent.y - marqueeStart.y),
+                  }}
+                >
+                  <div className="absolute top-1 left-1 bg-cyan-950/80 border border-cyan-400/50 text-cyan-300 font-mono text-[9px] px-1 py-0.5 rounded leading-none">
+                    LASSO SELECT
+                  </div>
+                </div>
+              )}
+
+              {/* Feature 2: Holographic Lasso / Cluster Selection HUD Card */}
+              {enableLassoSelect && lassoSelectedIds.size > 0 && lassoClusterMetrics && (
+                <div className="absolute bottom-6 left-6 z-40 bg-[#0B0B14]/95 border border-cyan-500/40 rounded-xl p-4 shadow-[0_0_30px_rgba(6,182,212,0.25)] backdrop-blur-xl font-mono flex flex-col gap-2.5 max-w-sm select-none animate-fadeIn">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#22D3EE]" />
+                      <span className="text-xs font-bold text-cyan-300 tracking-wider">[ HOLOGRAPHIC CLUSTER ]</span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setLassoSelectedIds(new Set());
+                        setIsolatedClusterIds(null);
+                      }}
+                      className="text-[10px] text-zinc-400 hover:text-white px-1.5 py-0.5 rounded hover:bg-white/10"
+                    >
+                      [ CLEAR ]
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-[10px]">
+                    <div className="bg-[#06060C] p-2 rounded border border-white/5 flex flex-col">
+                      <span className="text-zinc-500 text-[9px]">SELECTED NODES</span>
+                      <span className="text-white text-sm font-bold">{lassoClusterMetrics.count}</span>
+                    </div>
+                    <div className="bg-[#06060C] p-2 rounded border border-white/5 flex flex-col">
+                      <span className="text-zinc-500 text-[9px]">SUM COMPLEXITY (LOC)</span>
+                      <span className="text-cyan-400 text-sm font-bold">{lassoClusterMetrics.totalLoc.toLocaleString()}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 text-[9px]">
+                    <span className="text-zinc-500">LANGUAGES:</span>
+                    <div className="flex flex-wrap gap-1">
+                      {lassoClusterMetrics.languages.map((lang) => (
+                        <span key={lang} className="bg-cyan-950/60 border border-cyan-500/30 text-cyan-300 px-1.5 py-0.5 rounded">
+                          {lang}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-1 border-t border-white/10">
+                    <button
+                      onClick={() => {
+                        if (isolatedClusterIds) {
+                          setIsolatedClusterIds(null);
+                        } else {
+                          setIsolatedClusterIds(new Set(lassoSelectedIds));
+                        }
+                      }}
+                      className="flex-1 py-1.5 text-[10px] font-bold rounded bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/50 text-cyan-200 transition-all text-center"
+                    >
+                      {isolatedClusterIds ? '[ RESTORE FULL GRAPH ]' : '[ ISOLATE CLUSTER ]'}
+                    </button>
+                    {isSparkAiEnabled && (
+                      <button
+                        onClick={() => {
+                          const clusterNames = visibleGraphData.nodes.filter(n => lassoSelectedIds.has(n.id)).map(n => n.label).slice(0, 10).join(', ');
+                          setVoiceAiInitialPrompt(`Audit this selected architectural cluster of ${lassoClusterMetrics.count} nodes (${clusterNames}): focus on coupling and modularity.`);
+                          setIsVoiceAiModalOpen(true);
+                        }}
+                        className="py-1.5 px-3 text-[10px] font-bold rounded bg-purple-500/20 hover:bg-purple-500/30 border border-purple-400/50 text-purple-200 transition-all text-center"
+                      >
+                        [ AUDIT ]
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Feature 1: Blast Radius Active HUD Indicator */}
+              {enableBlastRadius && blastTargetId && (
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 bg-rose-950/90 border border-rose-500/60 shadow-[0_0_20px_rgba(244,63,94,0.4)] rounded-full px-4 py-1.5 backdrop-blur-md flex items-center gap-3 font-mono text-[10px] select-none">
+                  <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                  <span className="text-rose-200 font-bold tracking-wider">
+                    IMPACT BLAST: <span className="text-white">{visibleGraphData.nodes.find(n => n.id === blastTargetId)?.label || blastTargetId}</span> ({blastAffectedIds.size} DOWNSTREAM IMPORTERS)
+                  </span>
+                  <button
+                    onClick={() => setBlastTargetId(null)}
+                    className="text-rose-300 hover:text-white bg-rose-900/50 hover:bg-rose-800/60 px-2 py-0.5 rounded text-[9px] border border-rose-500/40"
+                  >
+                    [ CLEAR ]
+                  </button>
+                </div>
               )}
 
               {/* Feature 3: HUD 2D Radar Mini-Map */}
@@ -3242,10 +3648,15 @@ function NeuralGraphDashboardInner() {
                 />
               )}
 
-              <div className="absolute top-4 right-4 bg-[#0B0B10] border border-white/5 rounded-lg px-3 py-1.5 font-mono text-[8px] text-gray-500 uppercase tracking-widest pointer-events-none select-none ">
-                PAN: DRAG MOUSE | ZOOM: SCROLL | ORBIT: LEFT CLICK DRAG
+              <div className="absolute top-4 right-4 bg-[#0B0B10] border border-white/5 rounded-lg px-3 py-1.5 font-mono text-[8px] text-gray-500 uppercase tracking-widest pointer-events-none select-none flex items-center gap-2">
+                <span>PAN: DRAG | ZOOM: SCROLL | ORBIT: LEFT DRAG</span>
+                {enableLassoSelect && (
+                  <span className="text-cyan-400 font-bold border-l border-white/10 pl-2">
+                    LASSO: SHIFT + DRAG
+                  </span>
+                )}
               </div>
-            </>
+            </div>
           )}
         </div>
 
@@ -3347,8 +3758,26 @@ function NeuralGraphDashboardInner() {
                 ) : (selectedNode?.fileContent || nodeSourceCode || activeFileNode?.fileContent) ? (
                   <div className="flex-1 flex flex-col bg-white/5 border border-white/10 rounded-xl overflow-hidden min-h-[200px]">
                     <div className="bg-[#0B0B10] px-3 py-1.5 border-b border-white/10 select-none flex items-center justify-between">
-                      <span className="font-mono text-[9px] font-bold text-gray-400 uppercase">RAW FILE CONTENT</span>
-                      {enableLiveEditor && (
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-[9px] font-bold text-gray-400 uppercase">RAW FILE CONTENT</span>
+                        {enableInlineDiff && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowViewerDiff(prev => !prev);
+                              setIsEditingFile(false);
+                            }}
+                            className={`px-2 py-0.5 text-[9px] font-mono font-bold rounded border transition-all ${
+                              showViewerDiff 
+                                ? 'bg-emerald-950/60 text-emerald-300 border-emerald-500/50 shadow-[0_0_8px_rgba(16,185,129,0.3)]' 
+                                : 'bg-white/5 text-gray-400 border-white/10 hover:text-white hover:bg-white/10'
+                            }`}
+                          >
+                            {showViewerDiff ? '[ VIEW RAW ]' : '[ DIFF ]'}
+                          </button>
+                        )}
+                      </div>
+                      {enableLiveEditor && !showViewerDiff && (
                         <div className="flex items-center gap-2">
                           {saveStatusMsg && (
                             <span className={`text-[9px] font-mono ${saveStatusMsg.startsWith('Error') ? 'text-red-400' : 'text-emerald-400'}`}>
@@ -3396,7 +3825,38 @@ function NeuralGraphDashboardInner() {
                         </div>
                       )}
                     </div>
-                    {enableLiveEditor && isEditingFile ? (
+                    {showViewerDiff ? (
+                      <div className="flex-1 w-full p-3 font-mono text-[10px] leading-relaxed overflow-y-auto select-text bg-[#06060C] h-full">
+                        {isLoadingViewerDiff ? (
+                          <div className="text-zinc-500 py-6 text-center animate-pulse">[ QUERYING GIT WORKING TREE DIFF... ]</div>
+                        ) : !viewerGitDiff || !viewerGitDiff.trim() ? (
+                          <div className="text-zinc-500 py-6 text-center flex flex-col gap-1 items-center justify-center">
+                            <span className="text-emerald-400">[ WORKING TREE CLEAN ]</span>
+                            <span className="text-[9px] text-zinc-600">No uncommitted diff against HEAD</span>
+                          </div>
+                        ) : (
+                          viewerGitDiff.split('\n').map((line, idx) => {
+                            let lineStyle = "text-zinc-400";
+                            let bgStyle = "transparent";
+                            if (line.startsWith('+') && !line.startsWith('+++')) {
+                              lineStyle = "text-[#10B981]";
+                              bgStyle = "rgba(16, 185, 129, 0.08)";
+                            } else if (line.startsWith('-') && !line.startsWith('---')) {
+                              lineStyle = "text-[#EF4444]";
+                              bgStyle = "rgba(239, 68, 68, 0.08)";
+                            } else if (line.startsWith('@@')) {
+                              lineStyle = "text-cyan-400 font-bold";
+                              bgStyle = "rgba(6, 182, 212, 0.05)";
+                            }
+                            return (
+                              <div key={idx} className="px-1.5 py-0.5 whitespace-pre rounded-sm font-mono" style={{ backgroundColor: bgStyle }}>
+                                <span className={lineStyle}>{line}</span>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    ) : enableLiveEditor && isEditingFile ? (
                       <textarea
                         value={editableFileContent}
                         onChange={(e) => setEditableFileContent(e.target.value)}
@@ -3473,6 +3933,35 @@ function NeuralGraphDashboardInner() {
                   >
                     ✕
                   </button>
+                </div>
+
+                {/* GLOWING RED OVERDRIVE MASTER SWITCH BANNER */}
+                <div className={`shrink-0 px-6 py-2.5 border-b flex items-center justify-between transition-all duration-300 ${
+                  isOverdriveActive 
+                    ? 'bg-gradient-to-r from-red-950/80 via-red-900/50 to-rose-950/80 border-red-500 shadow-[0_0_25px_rgba(239,68,68,0.3)] animate-pulse'
+                    : 'bg-gradient-to-r from-red-950/30 via-[#0C0C18] to-red-950/20 border-red-500/30 hover:border-red-500/50'
+                }`}>
+                  <div className="flex items-center gap-2.5">
+                    <span className={`text-base ${isOverdriveActive ? 'text-red-400 drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]' : 'text-red-500/80'}`}>⚡</span>
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[11px] font-bold tracking-widest uppercase ${
+                          isOverdriveActive ? 'text-red-200 drop-shadow-[0_0_8px_rgba(239,68,68,0.9)]' : 'text-red-400'
+                        }`}>
+                          [ OVERDRIVE / MAX EXPERIENCE ]
+                        </span>
+                        {isOverdriveActive && (
+                          <span className="text-[8px] bg-red-500/20 border border-red-400 text-red-300 px-1.5 py-0.2 rounded font-mono font-bold tracking-wider animate-pulse">
+                            30x ACTIVE
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[9px] text-zinc-400 font-mono">
+                        Engages 30x hyper-speed, thermal shader, blast radius & all studio engines
+                      </span>
+                    </div>
+                  </div>
+                  <CyberToggle checked={isOverdriveActive} onChange={handleToggleOverdrive} />
                 </div>
 
                 {/* Tabs Header */}
@@ -3765,8 +4254,8 @@ function NeuralGraphDashboardInner() {
                         <input
                           type="range"
                           min="0.1"
-                          max="3"
-                          step="0.1"
+                          max="30"
+                          step="0.5"
                           value={animSpeed}
                           onChange={e => {
                             const val = Number(e.target.value);
@@ -3826,12 +4315,80 @@ function NeuralGraphDashboardInner() {
                             setEnableRadarMinimap(false);
                             setEnableAutonomousAuditor(false);
                             setEnableCyberSfx(false);
+                            setEnableBlastRadius(false);
+                            setBlastTargetId(null);
+                            setEnableLassoSelect(false);
+                            setLassoSelectedIds(new Set());
+                            setIsolatedClusterIds(null);
+                            setEnableInlineDiff(false);
+                            setShowViewerDiff(false);
+                            setEnableThermalShader(false);
+                            setIsOverdriveActive(false);
                             try { localStorage.setItem('orionx_enable_live_editor', 'false'); } catch (e) {}
                           }}
                           className="px-2.5 py-1 text-[9px] font-mono font-semibold rounded bg-[#0B0B16] hover:bg-purple-900/40 text-purple-300 border border-purple-500/30 transition-all"
                         >
                           [ ↺ RESET LABS ]
                         </button>
+                      </div>
+
+                      {/* 4 ADVANCED LAB ENGINES */}
+
+                      {/* FEATURE 1: IMPACT BLAST RADIUS ENGINE */}
+                      <div className="col-span-2 flex items-center justify-between py-2 border-b border-white/10">
+                        <div>
+                          <span className="text-xs font-mono text-zinc-100 font-semibold block">Impact Blast Radius Engine</span>
+                          <span className="text-[10px] font-mono text-zinc-400">Right-click context action to illuminate all direct & indirect downstream imports</span>
+                        </div>
+                        <CyberToggle 
+                          checked={enableBlastRadius} 
+                          onChange={(val) => {
+                            setEnableBlastRadius(val);
+                            if (!val) setBlastTargetId(null);
+                          }} 
+                        />
+                      </div>
+
+                      {/* FEATURE 2: HOLOGRAPHIC CLUSTER BOX/LASSO */}
+                      <div className="col-span-2 flex items-center justify-between py-2 border-b border-white/10">
+                        <div>
+                          <span className="text-xs font-mono text-zinc-100 font-semibold block">Holographic Cluster Box/Lasso</span>
+                          <span className="text-[10px] font-mono text-zinc-400">Shift + Drag to multi-select nodes and view aggregate metrics</span>
+                        </div>
+                        <CyberToggle 
+                          checked={enableLassoSelect} 
+                          onChange={(val) => {
+                            setEnableLassoSelect(val);
+                            if (!val) {
+                              setLassoSelectedIds(new Set());
+                              setIsolatedClusterIds(null);
+                            }
+                          }} 
+                        />
+                      </div>
+
+                      {/* FEATURE 3: GIT WORKING TREE SPLIT DIFF */}
+                      <div className="col-span-2 flex items-center justify-between py-2 border-b border-white/10">
+                        <div>
+                          <span className="text-xs font-mono text-zinc-100 font-semibold block">Git Working Tree Split Diff</span>
+                          <span className="text-[10px] font-mono text-zinc-400">Side-by-side Git diff viewer inside Raw File Content</span>
+                        </div>
+                        <CyberToggle 
+                          checked={enableInlineDiff} 
+                          onChange={(val) => {
+                            setEnableInlineDiff(val);
+                            if (!val) setShowViewerDiff(false);
+                          }} 
+                        />
+                      </div>
+
+                      {/* FEATURE 4: COMPLEXITY THERMAL HEATMAP */}
+                      <div className="col-span-2 flex items-center justify-between py-2 border-b border-white/10">
+                        <div>
+                          <span className="text-xs font-mono text-zinc-100 font-semibold block">Complexity Thermal Heatmap</span>
+                          <span className="text-[10px] font-mono text-zinc-400">Dynamically re-colors 3D nodes from Cool Blue to Volcanic Crimson based on LOC/complexity</span>
+                        </div>
+                        <CyberToggle checked={enableThermalShader} onChange={setEnableThermalShader} />
                       </div>
 
                       {/* FEATURE 1: LIVE CODE EDITOR */}
@@ -4085,6 +4642,25 @@ function NeuralGraphDashboardInner() {
             >
               [ VIEW DETAILS ]
             </button>
+
+            {/* Feature 1: Impact Blast Radius Engine */}
+            {enableBlastRadius && (
+              <button
+                onClick={() => {
+                  const nodeId = actionPopup.node.id;
+                  if (blastTargetId === nodeId) {
+                    setBlastTargetId(null);
+                  } else {
+                    setBlastTargetId(nodeId);
+                  }
+                  setActionPopup(null);
+                }}
+                className="w-full text-left px-2 py-1 text-[10px] rounded text-rose-300 hover:bg-rose-950/40 border border-rose-500/20 transition-colors flex items-center justify-between"
+              >
+                <span>{blastTargetId === actionPopup.node.id ? '[ CLEAR BLAST RADIUS ]' : '[ ANALYZE IMPACT RADIUS ]'}</span>
+                <span className="text-[9px] text-rose-400 font-bold">{blastTargetId === actionPopup.node.id ? 'ACTIVE' : 'BLAST'}</span>
+              </button>
+            )}
 
             {/* Feature 3: Spatial Node Pinning & Spatial Anchors */}
             {enableNodePinning && (

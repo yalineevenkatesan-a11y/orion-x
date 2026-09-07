@@ -21,6 +21,8 @@ const workspaceBindings = {
     ipcRenderer.invoke('workspace:gitStatus', directoryPath),
   writeFile: (filePath: string, content: string) =>
     ipcRenderer.invoke('workspace:writeFile', filePath, content),
+  getGitDiff: (filePath: string) =>
+    ipcRenderer.invoke('workspace:getGitDiff', filePath),
 };
 
 const aiBindings = {
@@ -44,6 +46,7 @@ const aiBindings = {
 const electronBindings = {
   readFile: (filePath: string) => ipcRenderer.invoke('workspace:readFile', filePath),
   writeFile: (filePath: string, content: string) => ipcRenderer.invoke('workspace:writeFile', filePath, content),
+  getGitDiff: (filePath: string) => ipcRenderer.invoke('workspace:getGitDiff', filePath),
   invoke: (channel: string, ...args: any[]) => ipcRenderer.invoke(channel, ...args),
   workspace: workspaceBindings,
   WORKSPACE: workspaceBindings,

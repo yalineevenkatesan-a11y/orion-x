@@ -67,7 +67,7 @@ export function initializeFileController(): void {
       if (!stats.isDirectory()) {
           return { name: pathNode.basename(dirPath), type: 'file', path: dirPath };
       }
-      const ignores = ['.git', 'node_modules', 'dist', '.next', 'out'];
+      const ignores = ['.git'];
       let children = [];
       try {
         children = fsNode.readdirSync(dirPath)
@@ -116,12 +116,15 @@ export async function generateWorkspaceGraphData(directoryPath: string): Promise
   const nodes: any[] = [];
   const edges: GraphEdge[] = [];
   const existingEdgeKeys = new Set<string>();
+  const MAX_NODES = 25000;
 
   async function walk(dir: string, parentId: string | null = null) {
+    if (nodes.length >= MAX_NODES) return;
     try {
       const entries = await fs.readdir(dir, { withFileTypes: true });
       for (const entry of entries) {
-        if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === 'dist' || entry.name === 'out' || entry.name === '.next') continue;
+        if (nodes.length >= MAX_NODES) break;
+        if (entry.name === '.git') continue;
         
         const fullPath = path.join(dir, entry.name);
         const id = fullPath;

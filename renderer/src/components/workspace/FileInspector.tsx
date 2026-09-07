@@ -5,7 +5,13 @@ import { motion } from 'framer-motion';
 import { useWorkspaceUi } from '@/context/WorkspaceUiContext';
 import { DatasetExplorer, isDatasetFile } from './DatasetExplorer';
 
-export function FileInspector({ enableLiveEditor = false }: { enableLiveEditor?: boolean }) {
+export function FileInspector({ 
+  enableLiveEditor = false,
+  enableInlineDiff = false
+}: { 
+  enableLiveEditor?: boolean;
+  enableInlineDiff?: boolean;
+}) {
   const { selectedNode, setSelectedNode, setActiveFileContext } = useWorkspaceUi();
   const [content, setContent] = useState<string>(selectedNode?.fileContent || '');
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -14,7 +20,12 @@ export function FileInspector({ enableLiveEditor = false }: { enableLiveEditor?:
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [saveMessage, setSaveMessage] = useState<string>('');
 
+  const [showDiff, setShowDiff] = useState<boolean>(false);
+  const [gitDiffText, setGitDiffText] = useState<string>('');
+  const [isLoadingDiff, setIsLoadingDiff] = useState<boolean>(false);
+
   const isLiveEditorActive = enableLiveEditor || (typeof window !== 'undefined' && localStorage.getItem('orionx_enable_live_editor') === 'true');
+  const isInlineDiffActive = enableInlineDiff || (typeof window !== 'undefined' && localStorage.getItem('orionx_enable_inline_diff') === 'true');
 
   const fileName = selectedNode?.label || selectedNode?.name || selectedNode?.path || 'Unknown';
   const isDataset = isDatasetFile(fileName);
@@ -22,6 +33,8 @@ export function FileInspector({ enableLiveEditor = false }: { enableLiveEditor?:
   useEffect(() => {
     setIsEditing(false);
     setSaveMessage('');
+    setShowDiff(false);
+    setGitDiffText('');
   }, [selectedNode?.id]);
 
   useEffect(() => {
@@ -152,6 +165,32 @@ export function FileInspector({ enableLiveEditor = false }: { enableLiveEditor?:
     }
   };
 
+  const fetchGitDiff = async (filePath: string) => {
+    if (!filePath) return;
+    setIsLoadingDiff(true);
+    try {
+      const fetcher = (window as any).electronAPI?.getGitDiff
+        || (window as any).electronAPI?.workspace?.getGitDiff
+        || ((p: string) => (window as any).electron?.invoke?.('workspace:getGitDiff', p))
+        || ((p: string) => (window as any).electron?.ipcRenderer?.invoke?.('workspace:getGitDiff', p));
+
+      if (typeof fetcher === 'function') {
+        const res = await fetcher(filePath);
+        if (res?.success) {
+          setGitDiffText(res.diff || '// Working tree clean (no uncommitted changes against HEAD)');
+        } else {
+          setGitDiffText('// ' + (res?.error || 'No git diff available'));
+        }
+      } else {
+        setGitDiffText('// IPC bridge unavailable for git diff');
+      }
+    } catch (err: any) {
+      setGitDiffText('// Git diff error: ' + (err?.message || 'Failed to fetch diff'));
+    } finally {
+      setIsLoadingDiff(false);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -232,51 +271,110 @@ export function FileInspector({ enableLiveEditor = false }: { enableLiveEditor?:
         ) : displayContent ? (
           <div className="flex-1 flex flex-col bg-white/5 border border-white/10 rounded-xl overflow-hidden min-h-[150px]">
             <div className="bg-black/40 px-3 py-1.5 border-b border-white/10 select-none flex items-center justify-between">
-              <span className="font-mono text-[9px] font-bold text-gray-400 uppercase">RAW FILE CONTENT</span>
-              {isLiveEditorActive && (
-                <div className="flex items-center gap-2">
-                  {saveMessage && (
-                    <span className={`text-[9px] font-mono ${saveMessage.startsWith('Error') ? 'text-red-400' : 'text-emerald-400'}`}>
-                      {saveMessage}
-                    </span>
-                  )}
-                  {isEditing ? (
-                    <div className="flex items-center gap-1.5">
+              <span className="font-mono text-[9px] font-bold text-gray-400 uppercase">
+                {showDiff ? 'GIT WORKING TREE DIFF' : 'RAW FILE CONTENT'}
+              </span>
+              <div className="flex items-center gap-2">
+                {isInlineDiffActive && selectedNode?.path && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = !showDiff;
+                      setShowDiff(next);
+                      if (next && selectedNode?.path) {
+                        fetchGitDiff(selectedNode.path);
+                      }
+                    }}
+                    className={`px-2 py-0.5 text-[9px] font-mono font-bold rounded border transition-all ${
+                      showDiff 
+                        ? 'bg-amber-950/50 text-amber-300 border-amber-400/60 shadow-[0_0_8px_rgba(245,158,11,0.25)]' 
+                        : 'bg-white/5 text-zinc-300 border-white/20 hover:text-white hover:bg-white/10'
+                    }`}
+                  >
+                    {showDiff ? '[ VIEW RAW ]' : '[ DIFF ]'}
+                  </button>
+                )}
+
+                {isLiveEditorActive && !showDiff && (
+                  <div className="flex items-center gap-2">
+                    {saveMessage && (
+                      <span className={`text-[9px] font-mono ${saveMessage.startsWith('Error') ? 'text-red-400' : 'text-emerald-400'}`}>
+                        {saveMessage}
+                      </span>
+                    )}
+                    {isEditing ? (
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditBuffer(displayContent);
+                            setIsEditing(false);
+                          }}
+                          className="px-2 py-0.5 text-[9px] font-mono rounded bg-white/10 text-gray-300 hover:text-white hover:bg-white/20"
+                        >
+                          [ CANCEL ]
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isSaving}
+                          onClick={handleSave}
+                          className="px-2 py-0.5 text-[9px] font-mono font-bold rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-500/30"
+                        >
+                          {isSaving ? '[ SAVING... ]' : '[ SAVE ]'}
+                        </button>
+                      </div>
+                    ) : (
                       <button
                         type="button"
                         onClick={() => {
                           setEditBuffer(displayContent);
-                          setIsEditing(false);
+                          setIsEditing(true);
                         }}
-                        className="px-2 py-0.5 text-[9px] font-mono rounded bg-white/10 text-gray-300 hover:text-white hover:bg-white/20"
+                        className="px-2 py-0.5 text-[9px] font-mono font-bold rounded bg-cyan-950/40 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-900/50"
                       >
-                        [ CANCEL ]
+                        [ EDIT ]
                       </button>
-                      <button
-                        type="button"
-                        disabled={isSaving}
-                        onClick={handleSave}
-                        className="px-2 py-0.5 text-[9px] font-mono font-bold rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-500/30"
-                      >
-                        {isSaving ? '[ SAVING... ]' : '[ SAVE ]'}
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditBuffer(displayContent);
-                        setIsEditing(true);
-                      }}
-                      className="px-2 py-0.5 text-[9px] font-mono font-bold rounded bg-cyan-950/40 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-900/50"
-                    >
-                      [ EDIT ]
-                    </button>
-                  )}
-                </div>
-              )}
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-            {isLiveEditorActive && isEditing ? (
+            {showDiff ? (
+              <div className="flex-1 overflow-auto p-3 font-mono text-[10px] leading-relaxed bg-[#06060C] select-text custom-scrollbar">
+                {isLoadingDiff ? (
+                  <div className="flex items-center gap-2 text-zinc-500 py-6 justify-center">
+                    <span className="w-4 h-4 rounded-full border-t-2 border-cyan-400 animate-spin" />
+                    <span>Analyzing Git Diff...</span>
+                  </div>
+                ) : gitDiffText ? (
+                  <div className="space-y-0.5">
+                    {gitDiffText.split('\n').map((line, idx) => {
+                      const isAdd = line.startsWith('+') && !line.startsWith('+++');
+                      const isDel = line.startsWith('-') && !line.startsWith('---');
+                      const isHunk = line.startsWith('@@');
+                      return (
+                        <div 
+                          key={idx} 
+                          className={`px-1.5 py-0.5 whitespace-pre rounded-sm font-mono ${
+                            isAdd
+                              ? 'bg-emerald-950/40 text-[#10B981] border-l-2 border-[#10B981]'
+                              : isDel
+                              ? 'bg-red-950/40 text-[#EF4444] border-l-2 border-[#EF4444]'
+                              : isHunk
+                              ? 'text-cyan-400 bg-cyan-950/30 font-bold'
+                              : 'text-zinc-400'
+                          }`}
+                        >
+                          {line || ' '}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-zinc-500 py-4 text-center">// Working tree clean (no uncommitted diff against HEAD)</div>
+                )}
+              </div>
+            ) : isLiveEditorActive && isEditing ? (
               <textarea
                 value={editBuffer}
                 onChange={(e) => setEditBuffer(e.target.value)}
