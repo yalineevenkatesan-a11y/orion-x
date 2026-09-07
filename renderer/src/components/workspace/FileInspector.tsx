@@ -5,13 +5,24 @@ import { motion } from 'framer-motion';
 import { useWorkspaceUi } from '@/context/WorkspaceUiContext';
 import { DatasetExplorer, isDatasetFile } from './DatasetExplorer';
 
-export function FileInspector() {
+export function FileInspector({ enableLiveEditor = false }: { enableLiveEditor?: boolean }) {
   const { selectedNode, setSelectedNode, setActiveFileContext } = useWorkspaceUi();
   const [content, setContent] = useState<string>(selectedNode?.fileContent || '');
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [editBuffer, setEditBuffer] = useState<string>('');
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [saveMessage, setSaveMessage] = useState<string>('');
+
+  const isLiveEditorActive = enableLiveEditor || (typeof window !== 'undefined' && localStorage.getItem('orionx_enable_live_editor') === 'true');
 
   const fileName = selectedNode?.label || selectedNode?.name || selectedNode?.path || 'Unknown';
   const isDataset = isDatasetFile(fileName);
+
+  useEffect(() => {
+    setIsEditing(false);
+    setSaveMessage('');
+  }, [selectedNode?.id]);
 
   useEffect(() => {
     let isMounted = true;
@@ -109,6 +120,38 @@ export function FileInspector() {
 
   const displayContent = content || selectedNode.fileContent || '';
 
+  const handleSave = async () => {
+    if (!selectedNode?.path) return;
+    setIsSaving(true);
+    setSaveMessage('Saving...');
+    try {
+      const writer = (window as any).electronAPI?.writeFile 
+        || (window as any).electronAPI?.workspace?.writeFile
+        || ((p: string, c: string) => (window as any).electron?.invoke?.('workspace:writeFile', p, c))
+        || ((p: string, c: string) => (window as any).electron?.ipcRenderer?.invoke?.('workspace:writeFile', p, c));
+
+      if (typeof writer === 'function') {
+        const res = await writer(selectedNode.path, editBuffer);
+        if (res?.success) {
+          setContent(editBuffer);
+          setSelectedNode((prev: any) => prev && prev.id === selectedNode.id ? { ...prev, fileContent: editBuffer } : prev);
+          setActiveFileContext(`[File: ${fileName}]\n${editBuffer}`);
+          setSaveMessage('Saved!');
+          setIsEditing(false);
+          setTimeout(() => setSaveMessage(''), 2500);
+        } else {
+          setSaveMessage('Error: ' + (res?.error || 'Save failed'));
+        }
+      } else {
+        setSaveMessage('IPC unavailable');
+      }
+    } catch (err: any) {
+      setSaveMessage('Error: ' + (err?.message || 'Save failed'));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -188,12 +231,63 @@ export function FileInspector() {
           />
         ) : displayContent ? (
           <div className="flex-1 flex flex-col bg-white/5 border border-white/10 rounded-xl overflow-hidden min-h-[150px]">
-            <div className="bg-black/40 px-3 py-1.5 border-b border-white/10 select-none">
-               <span className="font-mono text-[9px] font-bold text-gray-400 uppercase">RAW FILE CONTENT</span>
+            <div className="bg-black/40 px-3 py-1.5 border-b border-white/10 select-none flex items-center justify-between">
+              <span className="font-mono text-[9px] font-bold text-gray-400 uppercase">RAW FILE CONTENT</span>
+              {isLiveEditorActive && (
+                <div className="flex items-center gap-2">
+                  {saveMessage && (
+                    <span className={`text-[9px] font-mono ${saveMessage.startsWith('Error') ? 'text-red-400' : 'text-emerald-400'}`}>
+                      {saveMessage}
+                    </span>
+                  )}
+                  {isEditing ? (
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditBuffer(displayContent);
+                          setIsEditing(false);
+                        }}
+                        className="px-2 py-0.5 text-[9px] font-mono rounded bg-white/10 text-gray-300 hover:text-white hover:bg-white/20"
+                      >
+                        [ CANCEL ]
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isSaving}
+                        onClick={handleSave}
+                        className="px-2 py-0.5 text-[9px] font-mono font-bold rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-500/30"
+                      >
+                        {isSaving ? '[ SAVING... ]' : '[ SAVE ]'}
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditBuffer(displayContent);
+                        setIsEditing(true);
+                      }}
+                      className="px-2 py-0.5 text-[9px] font-mono font-bold rounded bg-cyan-950/40 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-900/50"
+                    >
+                      [ EDIT ]
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
-            <pre className="p-3 font-mono text-[10px] text-gray-300 leading-relaxed overflow-auto whitespace-pre select-text h-full font-light">
-              <code>{displayContent}</code>
-            </pre>
+            {isLiveEditorActive && isEditing ? (
+              <textarea
+                value={editBuffer}
+                onChange={(e) => setEditBuffer(e.target.value)}
+                className="w-full h-full p-3 font-mono text-[10px] text-gray-200 bg-[#06060C] focus:outline-none focus:ring-1 focus:ring-cyan-500/50 resize-none leading-relaxed select-text"
+                spellCheck={false}
+              />
+            ) : (
+              <pre className="p-3 font-mono text-[10px] text-gray-300 leading-relaxed overflow-auto whitespace-pre select-text h-full font-light">
+                <code>{displayContent}</code>
+              </pre>
+            )}
           </div>
         ) : selectedNode.isDir ? (
           <div className="flex-1 flex items-center justify-center text-center p-6">

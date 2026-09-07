@@ -194,7 +194,10 @@ function PhysicsGraph({
   highlightDependencyEdges = true,
   enableGitPulse = false,
   enableSearchHeatmap = false,
-  searchFilter = ''
+  searchFilter = '',
+  enableNodePinning = false,
+  pinnedNodeIds,
+  enableComplexitySizing = false
 }: { 
   nodes: GraphNode[], 
   links: GraphLink[], 
@@ -213,7 +216,10 @@ function PhysicsGraph({
   highlightDependencyEdges?: boolean,
   enableGitPulse?: boolean,
   enableSearchHeatmap?: boolean,
-  searchFilter?: string
+  searchFilter?: string,
+  enableNodePinning?: boolean,
+  pinnedNodeIds?: Set<string>,
+  enableComplexitySizing?: boolean
 }) {
   const nodeRefs = useRef<{ [key: string]: THREE.Mesh | null }>({});
   const { useFrame, useThree } = require('@react-three/fiber');
@@ -316,6 +322,17 @@ function PhysicsGraph({
     nodes.forEach(n => {
       if (n.x === undefined || n.y === undefined || n.z === undefined) return;
 
+      // Feature 3: Spatial Node Pinning - Override velocity and freeze coordinates
+      if (enableNodePinning && pinnedNodeIds?.has(n.id)) {
+        n.vx = 0;
+        n.vy = 0;
+        n.vz = 0;
+        if (nodeRefs.current[n.id]) {
+          nodeRefs.current[n.id]!.position.set(n.x, n.y, n.z);
+        }
+        return;
+      }
+
       if (isNaN(n.x) || isNaN(n.y) || isNaN(n.z) || !isFinite(n.x) || !isFinite(n.y) || !isFinite(n.z)) {
         n.x = (Math.random() - 0.5) * 40;
         n.y = (Math.random() - 0.5) * 40;
@@ -354,7 +371,12 @@ function PhysicsGraph({
       const isUnmatched = n.engineState === 'UNMATCHED';
 
       const color = isSelected ? '#00D2FF' : (n.health === 'critical' ? '#ef4444' : n.health === 'warning' ? '#eab308' : '#22c55e');
-      const radius = (isSelected ? (n.isDir ? 3.6 : 2.4) : (n.isDir ? 1.8 : 1.2)) * (nodeSize * 0.6);
+      
+      // Feature 4: Complexity-Weighted Node Sizing (Technical Debt Spheres)
+      const baseRadius = (isSelected ? (n.isDir ? 3.6 : 2.4) : (n.isDir ? 1.8 : 1.2)) * (nodeSize * 0.6);
+      const loc = n.loc || (n as any).LOC || (n.fileContent ? n.fileContent.split('\n').length : 20);
+      const complexityWeight = enableComplexitySizing ? Math.min(3.5, Math.max(0.8, Math.log10(Math.max(loc, 10)))) : 1.0;
+      const radius = baseRadius * complexityWeight;
 
       // Feature 2: Spatial Search Heatmap Beacons
       // Matching nodes retain full opacity with elevated emissive scale (2.0)
@@ -405,6 +427,13 @@ function PhysicsGraph({
               <meshBasicMaterial color="#F59E0B" side={THREE.DoubleSide} transparent opacity={0.6} />
             </mesh>
           )}
+          {/* Feature 3: Spatial Node Pinning Anchor Ring */}
+          {enableNodePinning && pinnedNodeIds?.has(n.id) && (
+            <mesh scale={[radius * 1.45, radius * 1.45, radius * 1.45]}>
+              <ringGeometry args={[1, 1.18, 32]} />
+              <meshBasicMaterial color="#06B6D4" side={THREE.DoubleSide} transparent opacity={0.85} />
+            </mesh>
+          )}
           {showBillboardLabel && (
             <Html position={[0, radius + 1, 0]} center zIndexRange={[100, 0]}>
               <div style={{ color: labelColor, fontSize: dynamicFontSize, fontFamily: 'monospace', textShadow: glowEnabled ? '1px 1px 3px black, -1px -1px 3px black' : 'none', pointerEvents: 'none', whiteSpace: 'nowrap', fontWeight: isSelected ? 'bold' : 'normal' }}>
@@ -415,7 +444,7 @@ function PhysicsGraph({
         </mesh>
       );
     });
-  }, [nodes, onSelectNode, onContextMenu, nodeSize, fileLabels, glowEnabled, fontScale, enableGitPulse, enableSearchHeatmap, searchFilter]);
+  }, [nodes, onSelectNode, onContextMenu, nodeSize, fileLabels, glowEnabled, fontScale, enableGitPulse, enableSearchHeatmap, searchFilter, enableNodePinning, pinnedNodeIds, enableComplexitySizing]);
 
   const memoizedLinks = useMemo(() => {
     const safeLinks = Array.isArray(links) ? links : [];
@@ -1511,8 +1540,9 @@ function NeuralGraphDashboardInner() {
   }, []);
 
   // -- NEW SETTINGS MATRIX STATES --
+  type SettingsTab = 'APPEARANCE' | 'SYSTEM' | 'LABS' | 'SPARK AI' | 'ABOUT ORION-X';
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<'APPEARANCE' | 'SYSTEM' | 'SPARK_AI'>('APPEARANCE');
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>('APPEARANCE');
   const [theme, setTheme] = useState('Dark');
 
   // Ensure Settings modal resets/defaults to 'APPEARANCE' on every open
@@ -1560,6 +1590,63 @@ function NeuralGraphDashboardInner() {
   // Feature 5: Cyber HUD Spatial SFX Audio Engine
   const [enableCyberSfx, setEnableCyberSfx] = useState<boolean>(false);
 
+  // --- NEW LABS / EXPERIMENTAL STUDIO ENHANCEMENT HOOKS (ALL DEFAULT OFF) ---
+  // Feature 1: Live In-Viewer Code Editor & Disk Save
+  const [enableLiveEditor, setEnableLiveEditor] = useState<boolean>(false);
+  const [isEditingFile, setIsEditingFile] = useState<boolean>(false);
+  const [editableFileContent, setEditableFileContent] = useState<string>('');
+  const [isSavingFile, setIsSavingFile] = useState<boolean>(false);
+  const [saveStatusMsg, setSaveStatusMsg] = useState<string>('');
+
+  // Feature 2: High-Resolution HUD Canvas Snapshot / PNG Exporter
+  const [enableHudExport, setEnableHudExport] = useState<boolean>(false);
+
+  // Feature 3: Spatial Node Pinning & Quick Favorites
+  const [enableNodePinning, setEnableNodePinning] = useState<boolean>(false);
+  const [pinnedNodeIds, setPinnedNodeIds] = useState<Set<string>>(new Set());
+
+  // Feature 4: Complexity-Weighted Node Sizing (Technical Debt Spheres)
+  const [enableComplexitySizing, setEnableComplexitySizing] = useState<boolean>(false);
+
+  // Feature 5: Recent Vaults Quick-Switcher History
+  const [enableVaultHistory, setEnableVaultHistory] = useState<boolean>(false);
+  const [recentVaults, setRecentVaults] = useState<{ id?: string; path: string; name: string; timestamp: number }[]>([]);
+  const [isVaultSwitcherOpen, setIsVaultSwitcherOpen] = useState<boolean>(false);
+
+  // Sync recent vaults with localStorage
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('orionx_recent_vaults');
+      if (stored) {
+        setRecentVaults(JSON.parse(stored));
+      }
+    } catch (e) {}
+  }, []);
+
+  useEffect(() => {
+    if (activeWorkspace?.path) {
+      const entry = {
+        id: activeWorkspace.id || `ws_${Date.now()}`,
+        path: activeWorkspace.path,
+        name: activeWorkspace.name || activeWorkspace.path.split(/[\\/]/).pop() || 'Workspace',
+        timestamp: Date.now()
+      };
+      setRecentVaults(prev => {
+        const filtered = prev.filter(v => v.path !== activeWorkspace.path);
+        const next = [entry, ...filtered].slice(0, 8);
+        try {
+          localStorage.setItem('orionx_recent_vaults', JSON.stringify(next));
+        } catch (e) {}
+        return next;
+      });
+    }
+  }, [activeWorkspace?.path, activeWorkspace?.name, activeWorkspace?.id]);
+
+  useEffect(() => {
+    setIsEditingFile(false);
+    setSaveStatusMsg('');
+  }, [selectedNode?.id, activeFileNode?.id]);
+
   const playCyberTone = useCallback((freq = 440, type: OscillatorType = 'sine', duration = 0.05) => {
     if (!enableCyberSfx) return;
     try {
@@ -1584,6 +1671,52 @@ function NeuralGraphDashboardInner() {
     window.addEventListener('cyber:toggle-sound', handleToggleSound);
     return () => window.removeEventListener('cyber:toggle-sound', handleToggleSound);
   }, [playCyberTone]);
+
+  const exportCanvasSnapshot = useCallback(() => {
+    if (playCyberTone) playCyberTone(700, 'sine', 0.08);
+    const canvas = document.querySelector('canvas');
+    if (!canvas) return;
+    try {
+      const imageUri = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.download = `ORION-X-CANVAS-${Date.now()}.png`;
+      link.href = imageUri;
+      link.click();
+    } catch (err) {
+      console.warn('Canvas export failed:', err);
+    }
+  }, [playCyberTone]);
+
+  const handleSaveLiveEditorFile = async (filePath: string, content: string) => {
+    if (!filePath) return;
+    setIsSavingFile(true);
+    setSaveStatusMsg('Saving...');
+    try {
+      const writer = (window as any).electronAPI?.writeFile
+        || (window as any).electronAPI?.workspace?.writeFile
+        || ((p: string, c: string) => (window as any).electron?.invoke?.('workspace:writeFile', p, c))
+        || ((p: string, c: string) => (window as any).electron?.ipcRenderer?.invoke?.('workspace:writeFile', p, c));
+
+      if (typeof writer === 'function') {
+        const res = await writer(filePath, content);
+        if (res?.success) {
+          setNodeSourceCode(content);
+          setSelectedNode((prev: any) => prev ? { ...prev, fileContent: content } : prev);
+          setActiveFileNode((prev: any) => prev ? { ...prev, fileContent: content } : prev);
+          setSaveStatusMsg('Saved!');
+          setTimeout(() => setSaveStatusMsg(''), 2500);
+        } else {
+          setSaveStatusMsg('Error: ' + (res?.error || 'Save failed'));
+        }
+      } else {
+        setSaveStatusMsg('IPC unavailable');
+      }
+    } catch (err: any) {
+      setSaveStatusMsg('Error: ' + (err?.message || 'Save failed'));
+    } finally {
+      setIsSavingFile(false);
+    }
+  };
 
   const handleResetCamera = () => {
     if (controlsRef.current) {
@@ -1635,6 +1768,14 @@ function NeuralGraphDashboardInner() {
     setEnableRadarMinimap(false);
     setEnableAutonomousAuditor(false);
     setEnableCyberSfx(false);
+    setEnableLiveEditor(false);
+    setIsEditingFile(false);
+    setEnableHudExport(false);
+    setEnableNodePinning(false);
+    setPinnedNodeIds(new Set());
+    setEnableComplexitySizing(false);
+    setEnableVaultHistory(false);
+    setIsVaultSwitcherOpen(false);
     if (typeof document !== 'undefined') {
       document.documentElement.style.fontSize = '100%';
       document.documentElement.style.setProperty('--app-font-scale', '100%');
@@ -2415,6 +2556,85 @@ function NeuralGraphDashboardInner() {
             {!isPhysicsFrozen ? '● MOTION' : '■ FROZEN'}
           </button>
 
+          {enableHudExport && (
+            <button
+              type="button"
+              onClick={exportCanvasSnapshot}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all text-xs font-mono font-bold text-emerald-300 bg-emerald-950/40 border border-emerald-500/40 hover:bg-emerald-900/50 hover:border-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.25)] active:scale-95"
+              title="Export High-Resolution HUD Canvas Snapshot PNG"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              [ EXPORT HUD ]
+            </button>
+          )}
+
+          {enableVaultHistory && (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsVaultSwitcherOpen(prev => !prev)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all text-xs font-mono font-bold ${
+                  isVaultSwitcherOpen
+                    ? 'text-cyan-300 bg-cyan-950/60 border border-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.3)]'
+                    : 'text-zinc-300 bg-[#0C0C16] border border-white/15 hover:bg-white/10 hover:text-white'
+                }`}
+                title="Recent Workspaces & Vault Switcher"
+              >
+                <span>📂</span>
+                <span>[ SWITCH VAULT ]</span>
+              </button>
+              {isVaultSwitcherOpen && (
+                <div className="absolute left-0 mt-2 w-72 bg-[#07070E] border border-cyan-500/40 rounded-xl shadow-[0_0_30px_rgba(0,0,0,0.9),0_0_15px_rgba(6,182,212,0.2)] p-2 z-50 font-mono select-none">
+                  <div className="flex items-center justify-between px-2 py-1 border-b border-white/10 mb-1.5">
+                    <span className="text-[10px] font-bold text-cyan-400 tracking-wider">RECENT VAULTS</span>
+                    <span className="text-[9px] text-zinc-500">{recentVaults.length} SAVED</span>
+                  </div>
+                  {recentVaults.length === 0 ? (
+                    <div className="px-2 py-3 text-center text-[10px] text-zinc-500">
+                      No recent vaults recorded
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-1 max-h-56 overflow-y-auto custom-scrollbar">
+                      {recentVaults.map((vault) => {
+                        const isCurrent = activeWorkspace?.path === vault.path;
+                        return (
+                          <button
+                            key={vault.path}
+                            type="button"
+                            onClick={() => {
+                              if (!isCurrent) {
+                                setActiveWorkspace({
+                                  id: vault.id || `ws_${Date.now()}`,
+                                  path: vault.path,
+                                  name: vault.name,
+                                  createdAt: vault.timestamp
+                                });
+                                window.dispatchEvent(new CustomEvent('orion:open-workspace', { detail: vault.path }));
+                              }
+                              setIsVaultSwitcherOpen(false);
+                            }}
+                            className={`w-full text-left px-2.5 py-1.5 rounded-lg text-[10px] transition-all flex flex-col gap-0.5 ${
+                              isCurrent
+                                ? 'bg-cyan-950/40 border border-cyan-400/50 text-cyan-300'
+                                : 'hover:bg-white/10 text-zinc-300 hover:text-white border border-transparent'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold truncate max-w-[170px]">{vault.name}</span>
+                              {isCurrent && <span className="text-[8px] text-cyan-400 uppercase">[ACTIVE]</span>}
+                            </div>
+                            <span className="text-[9px] text-zinc-500 truncate max-w-[240px] font-light">{vault.path}</span>
+                            <span className="text-[8px] text-zinc-600">{new Date(vault.timestamp).toLocaleDateString()} {new Date(vault.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           {enableAutonomousAuditor && (
             <button
               type="button"
@@ -2958,7 +3178,8 @@ function NeuralGraphDashboardInner() {
                   gl={{
                     antialias: true,
                     powerPreference: "high-performance",
-                    failIfMajorPerformanceCaveat: false
+                    failIfMajorPerformanceCaveat: false,
+                    preserveDrawingBuffer: true
                   }}
                   onCreated={({ gl }) => {
                     const canvasElement = gl.domElement;
@@ -3004,6 +3225,9 @@ function NeuralGraphDashboardInner() {
                     enableGitPulse={enableGitPulse}
                     enableSearchHeatmap={enableSearchHeatmap}
                     searchFilter={searchFilter}
+                    enableNodePinning={enableNodePinning}
+                    pinnedNodeIds={pinnedNodeIds}
+                    enableComplexitySizing={enableComplexitySizing}
                   />
                 </Canvas>
               )}
@@ -3122,12 +3346,68 @@ function NeuralGraphDashboardInner() {
                   />
                 ) : (selectedNode?.fileContent || nodeSourceCode || activeFileNode?.fileContent) ? (
                   <div className="flex-1 flex flex-col bg-white/5 border border-white/10 rounded-xl overflow-hidden min-h-[200px]">
-                    <div className="bg-[#0B0B10] px-3 py-1.5 border-b border-white/10 select-none">
+                    <div className="bg-[#0B0B10] px-3 py-1.5 border-b border-white/10 select-none flex items-center justify-between">
                       <span className="font-mono text-[9px] font-bold text-gray-400 uppercase">RAW FILE CONTENT</span>
+                      {enableLiveEditor && (
+                        <div className="flex items-center gap-2">
+                          {saveStatusMsg && (
+                            <span className={`text-[9px] font-mono ${saveStatusMsg.startsWith('Error') ? 'text-red-400' : 'text-emerald-400'}`}>
+                              {saveStatusMsg}
+                            </span>
+                          )}
+                          {isEditingFile ? (
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const current = selectedNode?.fileContent || nodeSourceCode || activeFileNode?.fileContent || '';
+                                  setEditableFileContent(current);
+                                  setIsEditingFile(false);
+                                }}
+                                className="px-2 py-0.5 text-[9px] font-mono rounded bg-white/10 text-gray-300 hover:text-white hover:bg-white/20"
+                              >
+                                [ CANCEL ]
+                              </button>
+                              <button
+                                type="button"
+                                disabled={isSavingFile}
+                                onClick={() => {
+                                  const targetPath = selectedNode?.path || activeFileNode?.path || selectedNode?.id || '';
+                                  handleSaveLiveEditorFile(targetPath, editableFileContent);
+                                }}
+                                className="px-2 py-0.5 text-[9px] font-mono font-bold rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-500/30"
+                              >
+                                {isSavingFile ? '[ SAVING... ]' : '[ SAVE ]'}
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const current = selectedNode?.fileContent || nodeSourceCode || activeFileNode?.fileContent || '';
+                                setEditableFileContent(current);
+                                setIsEditingFile(true);
+                              }}
+                              className="px-2 py-0.5 text-[9px] font-mono font-bold rounded bg-cyan-950/40 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-900/50"
+                            >
+                              [ EDIT ]
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <pre className="p-3 font-mono text-[10px] text-gray-300 leading-relaxed overflow-auto whitespace-pre select-text h-full font-light">
-                      <code>{selectedNode?.fileContent || nodeSourceCode || activeFileNode?.fileContent}</code>
-                    </pre>
+                    {enableLiveEditor && isEditingFile ? (
+                      <textarea
+                        value={editableFileContent}
+                        onChange={(e) => setEditableFileContent(e.target.value)}
+                        className="w-full h-full p-3 font-mono text-[10px] text-gray-200 bg-[#06060C] focus:outline-none focus:ring-1 focus:ring-cyan-500/50 resize-none leading-relaxed select-text"
+                        spellCheck={false}
+                      />
+                    ) : (
+                      <pre className="p-3 font-mono text-[10px] text-gray-300 leading-relaxed overflow-auto whitespace-pre select-text h-full font-light">
+                        <code>{selectedNode?.fileContent || nodeSourceCode || activeFileNode?.fileContent}</code>
+                      </pre>
+                    )}
                   </div>
                 ) : selectedNode?.isDir ? (
                   <div className="flex-1 flex items-center justify-center text-center p-6">
@@ -3197,7 +3477,7 @@ function NeuralGraphDashboardInner() {
 
                 {/* Tabs Header */}
                 <div className="shrink-0 flex items-center justify-between px-6 py-2 border-b border-white/10 bg-[#05050A] text-[10px]">
-                  {(['APPEARANCE', 'SYSTEM', 'SPARK AI', 'ABOUT ORION-X'] as const).map((tab) => (
+                  {(['APPEARANCE', 'SYSTEM', 'LABS', 'SPARK AI', 'ABOUT ORION-X'] as const).map((tab) => (
                     <button
                       key={tab}
                       onClick={() => {
@@ -3205,11 +3485,11 @@ function NeuralGraphDashboardInner() {
                           setIsSettingsOpen(false);
                           setIsAboutModalOpen(true);
                         } else {
-                          setSettingsTab(tab === 'SPARK AI' ? 'SPARK_AI' : tab);
+                          setSettingsTab(tab);
                         }
                       }}
                       className={`px-2 py-1 rounded transition-all ${
-                        (tab === 'SPARK AI' ? settingsTab === 'SPARK_AI' : settingsTab === tab) && tab !== 'ABOUT ORION-X'
+                        settingsTab === tab && tab !== 'ABOUT ORION-X'
                           ? 'text-cyan-300 font-bold border-b-2 border-cyan-400 drop-shadow-[0_0_6px_rgba(34,211,238,0.6)]'
                           : 'text-zinc-400 hover:text-zinc-200'
                       }`}
@@ -3446,51 +3726,6 @@ function NeuralGraphDashboardInner() {
                         <CyberToggle checked={highlightDependencyEdges} onChange={setHighlightDependencyEdges} />
                       </div>
 
-                      {/* FEATURE 1: GIT STATUS PULSE */}
-                      <div className="flex items-center justify-between py-2 border-b border-white/10">
-                        <div>
-                          <span className="text-xs font-mono text-zinc-100 font-semibold block">Git Status Pulse</span>
-                          <span className="text-[10px] font-mono text-zinc-400">Pings local Git status and highlights modified/uncommitted nodes</span>
-                        </div>
-                        <CyberToggle checked={enableGitPulse} onChange={setEnableGitPulse} />
-                      </div>
-
-                      {/* FEATURE 2: SEARCH HEATMAP RADAR */}
-                      <div className="flex items-center justify-between py-2 border-b border-white/10">
-                        <div>
-                          <span className="text-xs font-mono text-zinc-100 font-semibold block">Search Heatmap Radar</span>
-                          <span className="text-[10px] font-mono text-zinc-400">Dims non-matching nodes during search and illuminates hits as beacons</span>
-                        </div>
-                        <CyberToggle checked={enableSearchHeatmap} onChange={setEnableSearchHeatmap} />
-                      </div>
-
-                      {/* FEATURE 3: HUD RADAR MINI-MAP */}
-                      <div className="flex items-center justify-between py-2 border-b border-white/10">
-                        <div>
-                          <span className="text-xs font-mono text-zinc-100 font-semibold block">HUD Radar Mini-Map</span>
-                          <span className="text-[10px] font-mono text-zinc-400">Shows an orthographic 2D camera orientation map in the corner</span>
-                        </div>
-                        <CyberToggle checked={enableRadarMinimap} onChange={setEnableRadarMinimap} />
-                      </div>
-
-                      {/* FEATURE 4: AUTONOMOUS SECURITY SCANNER */}
-                      <div className="flex items-center justify-between py-2 border-b border-white/10">
-                        <div>
-                          <span className="text-xs font-mono text-zinc-100 font-semibold block">Autonomous Security Scanner</span>
-                          <span className="text-[10px] font-mono text-zinc-400">Enables one-click dead code & vulnerability auditing via Spark AI</span>
-                        </div>
-                        <CyberToggle checked={enableAutonomousAuditor} onChange={setEnableAutonomousAuditor} />
-                      </div>
-
-                      {/* FEATURE 5: CYBERPUNK SPATIAL SFX */}
-                      <div className="flex items-center justify-between py-2 border-b border-white/10">
-                        <div>
-                          <span className="text-xs font-mono text-zinc-100 font-semibold block">Cyberpunk Spatial SFX</span>
-                          <span className="text-[10px] font-mono text-zinc-400">Plays synthesized Web Audio API clicks and hums during navigation</span>
-                        </div>
-                        <CyberToggle checked={enableCyberSfx} onChange={setEnableCyberSfx} />
-                      </div>
-
                       <div className="flex flex-col gap-1">
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-mono text-zinc-100 font-semibold">Node Size ({nodeSize.toFixed(1)}x)</span>
@@ -3567,7 +3802,137 @@ function NeuralGraphDashboardInner() {
                     </>
                   )}
 
-                  {settingsTab === 'SPARK_AI' && (
+                  {settingsTab === 'LABS' && (
+                    <>
+                      {/* LABS HEADER BANNER */}
+                      <div className="col-span-2 p-3 rounded-xl bg-purple-950/20 border border-purple-500/30 flex items-center justify-between">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-[11px] font-mono font-bold text-purple-300 tracking-wider">EXPERIMENTAL / LABS MATRIX</span>
+                          <span className="text-[9px] font-mono text-zinc-400">Opt-in advanced studio features (all default OFF).</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEnableLiveEditor(false);
+                            setIsEditingFile(false);
+                            setEnableHudExport(false);
+                            setEnableNodePinning(false);
+                            setPinnedNodeIds(new Set());
+                            setEnableComplexitySizing(false);
+                            setEnableVaultHistory(false);
+                            setIsVaultSwitcherOpen(false);
+                            setEnableGitPulse(false);
+                            setEnableSearchHeatmap(false);
+                            setEnableRadarMinimap(false);
+                            setEnableAutonomousAuditor(false);
+                            setEnableCyberSfx(false);
+                            try { localStorage.setItem('orionx_enable_live_editor', 'false'); } catch (e) {}
+                          }}
+                          className="px-2.5 py-1 text-[9px] font-mono font-semibold rounded bg-[#0B0B16] hover:bg-purple-900/40 text-purple-300 border border-purple-500/30 transition-all"
+                        >
+                          [ ↺ RESET LABS ]
+                        </button>
+                      </div>
+
+                      {/* FEATURE 1: LIVE CODE EDITOR */}
+                      <div className="col-span-2 flex items-center justify-between py-2 border-b border-white/10">
+                        <div>
+                          <span className="text-xs font-mono text-zinc-100 font-semibold block">Live Code Editor</span>
+                          <span className="text-[10px] font-mono text-zinc-400">In-line editing and disk-saving inside the RAW FILE CONTENT inspector</span>
+                        </div>
+                        <CyberToggle 
+                          checked={enableLiveEditor} 
+                          onChange={(val) => {
+                            setEnableLiveEditor(val);
+                            try { localStorage.setItem('orionx_enable_live_editor', String(val)); } catch (e) {}
+                          }} 
+                        />
+                      </div>
+
+                      {/* FEATURE 2: HUD CANVAS EXPORTER */}
+                      <div className="col-span-2 flex items-center justify-between py-2 border-b border-white/10">
+                        <div>
+                          <span className="text-xs font-mono text-zinc-100 font-semibold block">HUD Canvas Exporter</span>
+                          <span className="text-[10px] font-mono text-zinc-400">Adds an [ EXPORT HUD ] button to capture clean 3D graph PNG snapshots</span>
+                        </div>
+                        <CyberToggle checked={enableHudExport} onChange={setEnableHudExport} />
+                      </div>
+
+                      {/* FEATURE 3: NODE PINNING SYSTEM */}
+                      <div className="col-span-2 flex items-center justify-between py-2 border-b border-white/10">
+                        <div>
+                          <span className="text-xs font-mono text-zinc-100 font-semibold block">Node Pinning System</span>
+                          <span className="text-[10px] font-mono text-zinc-400">Adds pin/unpin toggles to node action menus and freezes pinned coordinates</span>
+                        </div>
+                        <CyberToggle checked={enableNodePinning} onChange={setEnableNodePinning} />
+                      </div>
+
+                      {/* FEATURE 4: COMPLEXITY SPHERE SCALING */}
+                      <div className="col-span-2 flex items-center justify-between py-2 border-b border-white/10">
+                        <div>
+                          <span className="text-xs font-mono text-zinc-100 font-semibold block">Complexity Sphere Scaling</span>
+                          <span className="text-[10px] font-mono text-zinc-400">Scales 3D sphere radii based on actual file lines of code / AST complexity</span>
+                        </div>
+                        <CyberToggle checked={enableComplexitySizing} onChange={setEnableComplexitySizing} />
+                      </div>
+
+                      {/* FEATURE 5: VAULT QUICK SWITCHER */}
+                      <div className="col-span-2 flex items-center justify-between py-2 border-b border-white/10">
+                        <div>
+                          <span className="text-xs font-mono text-zinc-100 font-semibold block">Vault Quick Switcher</span>
+                          <span className="text-[10px] font-mono text-zinc-400">Remembers recently opened workspaces and exposes a quick-launch menu</span>
+                        </div>
+                        <CyberToggle checked={enableVaultHistory} onChange={setEnableVaultHistory} />
+                      </div>
+
+                      {/* MIGRATED FEATURE 6: GIT STATUS PULSE */}
+                      <div className="col-span-2 flex items-center justify-between py-2 border-b border-white/10">
+                        <div>
+                          <span className="text-xs font-mono text-zinc-100 font-semibold block">Git Status Pulse</span>
+                          <span className="text-[10px] font-mono text-zinc-400">Pings local Git status and highlights modified/uncommitted nodes</span>
+                        </div>
+                        <CyberToggle checked={enableGitPulse} onChange={setEnableGitPulse} />
+                      </div>
+
+                      {/* MIGRATED FEATURE 7: SEARCH HEATMAP RADAR */}
+                      <div className="col-span-2 flex items-center justify-between py-2 border-b border-white/10">
+                        <div>
+                          <span className="text-xs font-mono text-zinc-100 font-semibold block">Search Heatmap Radar</span>
+                          <span className="text-[10px] font-mono text-zinc-400">Dims non-matching nodes during search and illuminates hits as beacons</span>
+                        </div>
+                        <CyberToggle checked={enableSearchHeatmap} onChange={setEnableSearchHeatmap} />
+                      </div>
+
+                      {/* MIGRATED FEATURE 8: HUD RADAR MINI-MAP */}
+                      <div className="col-span-2 flex items-center justify-between py-2 border-b border-white/10">
+                        <div>
+                          <span className="text-xs font-mono text-zinc-100 font-semibold block">HUD Radar Mini-Map</span>
+                          <span className="text-[10px] font-mono text-zinc-400">Shows an orthographic 2D camera orientation map in the corner</span>
+                        </div>
+                        <CyberToggle checked={enableRadarMinimap} onChange={setEnableRadarMinimap} />
+                      </div>
+
+                      {/* MIGRATED FEATURE 9: AUTONOMOUS SECURITY SCANNER */}
+                      <div className="col-span-2 flex items-center justify-between py-2 border-b border-white/10">
+                        <div>
+                          <span className="text-xs font-mono text-zinc-100 font-semibold block">Autonomous Security Scanner</span>
+                          <span className="text-[10px] font-mono text-zinc-400">Enables one-click dead code & vulnerability auditing via Spark AI</span>
+                        </div>
+                        <CyberToggle checked={enableAutonomousAuditor} onChange={setEnableAutonomousAuditor} />
+                      </div>
+
+                      {/* MIGRATED FEATURE 10: CYBERPUNK SPATIAL SFX */}
+                      <div className="col-span-2 flex items-center justify-between py-2 border-b border-white/10">
+                        <div>
+                          <span className="text-xs font-mono text-zinc-100 font-semibold block">Cyberpunk Spatial SFX</span>
+                          <span className="text-[10px] font-mono text-zinc-400">Plays synthesized Web Audio API clicks and hums during navigation</span>
+                        </div>
+                        <CyberToggle checked={enableCyberSfx} onChange={setEnableCyberSfx} />
+                      </div>
+                    </>
+                  )}
+
+                  {settingsTab === 'SPARK AI' && (
                     <>
                       <div className="flex items-center justify-between py-2 border-b border-white/10">
                         <div>
@@ -3720,6 +4085,29 @@ function NeuralGraphDashboardInner() {
             >
               [ VIEW DETAILS ]
             </button>
+
+            {/* Feature 3: Spatial Node Pinning & Spatial Anchors */}
+            {enableNodePinning && (
+              <button
+                onClick={() => {
+                  const nodeId = actionPopup.node.id;
+                  setPinnedNodeIds(prev => {
+                    const next = new Set(prev);
+                    if (next.has(nodeId)) {
+                      next.delete(nodeId);
+                    } else {
+                      next.add(nodeId);
+                    }
+                    return next;
+                  });
+                  setActionPopup(null);
+                }}
+                className="w-full text-left px-2 py-1 text-[10px] rounded text-cyan-300 hover:bg-cyan-950/40 border border-cyan-500/20 transition-colors flex items-center justify-between"
+              >
+                <span>{pinnedNodeIds.has(actionPopup.node.id) ? '[ UNPIN NODE ]' : '[ PIN NODE ]'}</span>
+                <span className="text-[9px] text-cyan-400 font-bold">{pinnedNodeIds.has(actionPopup.node.id) ? 'ANCHORED' : 'FREE'}</span>
+              </button>
+            )}
 
             {/* Action 3: Connect to Spark AI for subtree audit */}
             {isSparkAiEnabled && (
