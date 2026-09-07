@@ -79,16 +79,18 @@ export function initializeWorkspaceController(): void {
     }
   });
 
+  // Before registering, safely clear any prior registration
+  if (ipcMain && typeof ipcMain.removeHandler === 'function') {
+    ipcMain.removeHandler('workspace:writeFile');
+  }
+
   ipcMain.handle('workspace:writeFile', async (_event, filePath: string, content: string) => {
     try {
-      if (!filePath) {
-        return { success: false, error: 'No file path provided' };
-      }
+      if (!filePath) return { success: false, error: 'Empty file path' };
       fs.writeFileSync(path.resolve(filePath), content, 'utf-8');
       return { success: true };
     } catch (err: any) {
-      console.error('workspace:writeFile failed:', err);
-      return { success: false, error: err?.message || String(err) };
+      return { success: false, error: err?.message || 'Failed to write file' };
     }
   });
 
@@ -160,16 +162,7 @@ export function initializeWorkspaceController(): void {
 
   // workspace:readFile is registered in main entry point (index.ts)
 
-  // workspace:writeFile - In-canvas live code editor saving
-  ipcMain.handle('workspace:writeFile', async (_event, filePath: string, content: string) => {
-    try {
-      fs.writeFileSync(path.resolve(filePath), content, 'utf-8');
-      return { success: true };
-    } catch (err: any) {
-      console.error('[workspace:writeFile] Error writing file:', err);
-      return { success: false, error: err.message };
-    }
-  });
+
 
   // Open directory selection dialog
   ipcMain.handle('workspace:open-dialog', async () => {

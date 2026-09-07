@@ -13,9 +13,12 @@ import { SettingsRegistry } from './services/SettingsRegistry';
 import { Logger } from './utils/Logger'; 
 
 // Remove any duplicate handler if already present
-ipcMain.removeHandler('workspace:readFile');
+if (ipcMain && typeof ipcMain.removeHandler === 'function') {
+  ipcMain.removeHandler('workspace:readFile');
+}
 
-ipcMain.handle('workspace:readFile', async (_event, filePath: string) => {
+if (ipcMain && typeof ipcMain.handle === 'function') {
+  ipcMain.handle('workspace:readFile', async (_event, filePath: string) => {
   try {
     if (!filePath || typeof filePath !== 'string') {
       return { success: false, error: 'Invalid file path' };
@@ -70,7 +73,8 @@ ipcMain.handle('workspace:readFile', async (_event, filePath: string) => {
       error: err?.message || 'Failed to read path'
     };
   }
-}); 
+  }); 
+} 
 
 Logger.getInstance().info('Kernel', 'ORION-X Studio Bootstrap Lifecycle Initiated Successfully'); 
 let mainWindow: BrowserWindow | null = null; 
