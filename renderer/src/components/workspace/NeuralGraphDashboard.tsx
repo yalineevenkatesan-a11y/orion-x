@@ -2601,10 +2601,10 @@ function NeuralGraphDashboardInner() {
                 if (e.target === e.currentTarget) setIsSettingsOpen(false);
               }}
             >
-              <div className="relative w-[560px] max-w-[95vw] h-[590px] bg-[#0C0C18]/95 border border-purple-500/30 rounded-2xl shadow-[0_0_40px_rgba(168,85,247,0.2)] flex flex-col overflow-hidden font-mono mt-8">
-                {/* Fixed Header */}
-                <div className="shrink-0 flex items-center justify-between px-6 py-3.5 border-b border-white/10 bg-[#0E0E1C]">
-                  <span className="text-xs font-bold tracking-wider text-cyan-400">[ PREMIUM SETTINGS MATRIX ]</span>
+              <div className="relative w-[560px] max-w-[95vw] h-[590px] bg-[#07070E] border border-cyan-500/30 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.9),0_0_20px_rgba(6,182,212,0.15)] flex flex-col overflow-hidden font-mono mt-8">
+                {/* Top Header */}
+                <div className="shrink-0 flex items-center justify-between px-6 py-3.5 border-b border-white/10 bg-[#0A0A14]">
+                  <span className="text-xs font-bold tracking-wider text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]">[ PREMIUM SETTINGS MATRIX ]</span>
                   <button
                     onClick={() => setIsSettingsOpen(false)}
                     className="w-6 h-6 rounded-md hover:bg-white/10 text-zinc-400 hover:text-white flex items-center justify-center text-xs transition-colors"
@@ -2613,8 +2613,8 @@ function NeuralGraphDashboardInner() {
                   </button>
                 </div>
 
-                {/* Fixed Tab Ribbon */}
-                <div className="shrink-0 flex items-center justify-between px-6 py-2 border-b border-white/5 bg-[#090913] text-[10px]">
+                {/* Tabs Header */}
+                <div className="shrink-0 flex items-center justify-between px-6 py-2 border-b border-white/10 bg-[#05050A] text-[10px]">
                   {(['APPEARANCE', 'SYSTEM', 'SPARK AI', 'ABOUT ORION-X'] as const).map((tab) => (
                     <button
                       key={tab}
@@ -2626,10 +2626,10 @@ function NeuralGraphDashboardInner() {
                           setSettingsTab(tab === 'SPARK AI' ? 'SPARK_AI' : tab);
                         }
                       }}
-                      className={`px-2 py-1 rounded transition-colors ${
+                      className={`px-2 py-1 rounded transition-all ${
                         (tab === 'SPARK AI' ? settingsTab === 'SPARK_AI' : settingsTab === tab) && tab !== 'ABOUT ORION-X'
-                          ? 'text-cyan-400 font-bold border-b-2 border-cyan-400'
-                          : 'text-zinc-500 hover:text-zinc-300'
+                          ? 'text-cyan-300 font-bold border-b-2 border-cyan-400 drop-shadow-[0_0_6px_rgba(34,211,238,0.6)]'
+                          : 'text-zinc-400 hover:text-zinc-200'
                       }`}
                     >
                       [ {tab} ]
@@ -2637,21 +2637,21 @@ function NeuralGraphDashboardInner() {
                   ))}
                 </div>
 
-                {/* Scrollable Tab Body (prevents modal from stretching upwards) */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
+                {/* Scrollable Tab Content with Pitch-Black Background */}
+                <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-[#07070E] custom-scrollbar">
                   {/* DYNAMIC TAB RENDER CONTENT */}
                   <div className="grid grid-cols-2 gap-4">
                   {settingsTab === 'APPEARANCE' && (
                     <>
-                      <div className="flex flex-col gap-1 col-span-2">
-                        <span className="text-[10px] font-mono text-zinc-500">Theme Engine</span>
+                      <div className="flex flex-col gap-1.5 col-span-2">
+                        <span className="text-xs font-mono text-zinc-100 font-semibold block">Theme Engine</span>
                         <div className="flex gap-2">
                           <button
                             onClick={() => {
                               setCurrentTheme('dark');
                               console.log("[SETTINGS ENGINE] Switched view theme matrix to Charcoal Dark HUD.");
                             }}
-                            className={`px-2 py-1 text-[10px] font-mono uppercase rounded border transition-colors ${currentTheme === 'dark' ? 'bg-cyan-900/30 border-cyan-500 text-white' : 'bg-zinc-900 border-zinc-800 text-zinc-400'}`}
+                            className={`px-3 py-1.5 text-[10px] font-mono uppercase rounded-lg border transition-all ${currentTheme === 'dark' ? 'bg-cyan-950/40 border-cyan-400 text-cyan-300 shadow-[0_0_10px_rgba(6,182,212,0.2)]' : 'bg-[#0B0B16] border-white/15 text-zinc-300 hover:text-white hover:border-white/30'}`}
                           >
                             DARK HUD
                           </button>
@@ -2660,7 +2660,7 @@ function NeuralGraphDashboardInner() {
                               setCurrentTheme('light');
                               console.log("[SETTINGS ENGINE] Switched view theme matrix to High-Contrast Amber HUD.");
                             }}
-                            className={`px-2 py-1 text-[10px] font-mono uppercase rounded border transition-colors ${currentTheme === 'light' ? 'bg-cyan-900/30 border-cyan-500 text-white' : 'bg-zinc-900 border-zinc-800 text-zinc-400'}`}
+                            className={`px-3 py-1.5 text-[10px] font-mono uppercase rounded-lg border transition-all ${currentTheme === 'light' ? 'bg-cyan-950/40 border-cyan-400 text-cyan-300 shadow-[0_0_10px_rgba(6,182,212,0.2)]' : 'bg-[#0B0B16] border-white/15 text-zinc-300 hover:text-white hover:border-white/30'}`}
                           >
                             AMBER HUD
                           </button>
@@ -2668,9 +2668,9 @@ function NeuralGraphDashboardInner() {
                       </div>
 
                       {/* REDESIGNED UI DENSITY SELECTOR */}
-                      <div className="flex flex-col gap-1.5 py-2 border-b border-white/5 col-span-2">
-                        <span className="text-xs font-mono text-zinc-300">UI Density</span>
-                        <div className="inline-flex p-1 rounded-xl bg-[#080811] border border-white/10 gap-1 w-full">
+                      <div className="flex flex-col gap-1.5 py-2 border-b border-white/10 col-span-2">
+                        <span className="text-xs font-mono text-zinc-100 font-semibold block">UI Density</span>
+                        <div className="inline-flex p-1 rounded-xl bg-[#0B0B16] border border-white/15 gap-1 w-full">
                           {(['COMPACT', 'STANDARD', 'SPACIOUS'] as const).map((mode) => (
                             <button
                               key={mode}
@@ -2678,8 +2678,8 @@ function NeuralGraphDashboardInner() {
                               onClick={() => setUiDensity(mode.toLowerCase())}
                               className={`flex-1 py-1.5 text-[10px] font-mono rounded-lg font-semibold tracking-wider transition-all ${
                                 uiDensity.toUpperCase() === mode
-                                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/50 shadow-[0_0_10px_rgba(6,182,212,0.3)]'
-                                  : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
+                                  ? 'bg-cyan-500/25 text-cyan-300 border border-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.35)]'
+                                  : 'text-zinc-400 hover:text-zinc-100 hover:bg-white/5'
                               }`}
                             >
                               {mode}
@@ -2689,32 +2689,35 @@ function NeuralGraphDashboardInner() {
                       </div>
 
                       {/* GLOBAL GLASSMORPHISM / BACKDROP BLUR TOGGLE */}
-                      <div className="flex items-center justify-between py-2 border-b border-white/5 col-span-2">
+                      <div className="flex items-center justify-between py-2 border-b border-white/10 col-span-2">
                         <div>
-                          <span className="text-xs font-mono text-zinc-200 block">Glassmorphism / Backdrop Blur</span>
-                          <span className="text-[10px] font-mono text-zinc-500">Toggle translucent background blurs across all modals</span>
+                          <span className="text-xs font-mono text-zinc-100 font-semibold block">Glassmorphism / Backdrop Blur</span>
+                          <span className="text-[10px] font-mono text-zinc-400">Toggle translucent background blurs across all modals</span>
                         </div>
                         <CyberToggle checked={enableGlassBlur} onChange={setEnableGlassBlur} />
                       </div>
 
-                      <div className="flex items-center justify-between py-2 border-b border-white/5 col-span-2">
+                      <div className="flex items-center justify-between py-2 border-b border-white/10 col-span-2">
                         <div>
-                          <span className="text-xs font-mono text-zinc-200 block">Glow & Animations</span>
-                          <span className="text-[10px] font-mono text-zinc-500">Volumetric node bloom and pulse effects</span>
+                          <span className="text-xs font-mono text-zinc-100 font-semibold block">Glow & Animations</span>
+                          <span className="text-[10px] font-mono text-zinc-400">Volumetric node bloom and pulse effects</span>
                         </div>
                         <CyberToggle checked={glowEnabled} onChange={setGlowEnabled} />
                       </div>
 
-                      <div className="flex items-center justify-between py-2 border-b border-white/5 col-span-2">
+                      <div className="flex items-center justify-between py-2 border-b border-white/10 col-span-2">
                         <div>
-                          <span className="text-xs font-mono text-zinc-200 block">Background Particle Grid</span>
-                          <span className="text-[10px] font-mono text-zinc-500">Ambient 3D starfield & matrix grid</span>
+                          <span className="text-xs font-mono text-zinc-100 font-semibold block">Background Particle Grid</span>
+                          <span className="text-[10px] font-mono text-zinc-400">Ambient 3D starfield & matrix grid</span>
                         </div>
                         <CyberToggle checked={starGridActive} onChange={setStarGridActive} />
                       </div>
 
-                      <div className="flex flex-col gap-1 col-span-2">
-                        <span className="text-[10px] font-mono text-zinc-500">Font Scaling ({fontScale}%)</span>
+                      <div className="flex flex-col gap-1.5 col-span-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-mono text-zinc-100 font-semibold">Font Scaling</span>
+                          <span className="text-[10px] font-mono text-cyan-400 font-bold">{fontScale}%</span>
+                        </div>
                         <input
                           type="range"
                           min="80"
@@ -2733,10 +2736,10 @@ function NeuralGraphDashboardInner() {
                         />
                       </div>
 
-                      <div className="col-span-2 pt-3 mt-1 border-t border-[#1E1E26] flex items-center justify-between">
+                      <div className="col-span-2 pt-3 mt-1 border-t border-white/10 flex items-center justify-between">
                         <div className="flex flex-col">
-                          <span className="text-[11px] font-mono font-bold text-zinc-300">Reset Appearance</span>
-                          <span className="text-[9px] font-mono text-zinc-500">Restore theme, glow, particles & font scaling</span>
+                          <span className="text-[11px] font-mono font-bold text-zinc-100">Reset Appearance</span>
+                          <span className="text-[9px] font-mono text-zinc-400">Restore theme, glow, particles & font scaling</span>
                         </div>
                         <button
                           type="button"
@@ -2753,7 +2756,7 @@ function NeuralGraphDashboardInner() {
                             }
                             console.log("[SETTINGS ENGINE] Appearance settings reset to default values.");
                           }}
-                          className="px-3 py-1.5 bg-zinc-900 hover:bg-cyan-950/50 border border-zinc-700 hover:border-cyan-500 text-zinc-300 hover:text-cyan-300 text-[10px] font-mono font-bold rounded transition-colors flex items-center gap-1.5 select-none shadow-sm active:scale-95"
+                          className="px-3 py-1.5 bg-[#0B0B16] hover:bg-cyan-950/50 border border-white/20 hover:border-cyan-400 text-zinc-200 hover:text-cyan-300 text-[10px] font-mono font-bold rounded-lg transition-all flex items-center gap-1.5 select-none shadow-sm active:scale-95"
                           title="Reset Appearance settings to default"
                         >
                           <span className="text-cyan-400 font-bold text-xs">↺</span>
@@ -2766,45 +2769,45 @@ function NeuralGraphDashboardInner() {
                   {settingsTab === 'SYSTEM' && (
                     <>
                       {/* NEURAL TREE MATRIX / TOPOLOGY TOGGLE */}
-                      <div className="col-span-2 flex items-center justify-between py-2 border-b border-white/5">
+                      <div className="col-span-2 flex items-center justify-between py-2 border-b border-white/10">
                         <div>
-                          <span className="text-xs font-mono text-zinc-200 block">Neural Tree Topology</span>
-                          <span className="text-[10px] font-mono text-zinc-500">Arrange nodes into an animated 3D hierarchical tree</span>
+                          <span className="text-xs font-mono text-zinc-100 font-semibold block">Neural Tree Topology</span>
+                          <span className="text-[10px] font-mono text-zinc-400">Arrange nodes into an animated 3D hierarchical tree</span>
                         </div>
                         <CyberToggle checked={isTreeLayout} onChange={setIsTreeLayout} />
                       </div>
 
                       {/* FREEZE / UNFREEZE MOVING NODES (MOTION TOGGLE) */}
-                      <div className="col-span-2 flex items-center justify-between py-2 border-b border-white/5">
+                      <div className="col-span-2 flex items-center justify-between py-2 border-b border-white/10">
                         <div>
-                          <span className="text-xs font-mono text-zinc-200 block">
-                            Node Motion {!isPhysicsFrozen ? <span className="text-[10px] text-cyan-400 font-normal">[ACTIVE]</span> : <span className="text-[10px] text-zinc-500 font-normal">[FROZEN]</span>}
+                          <span className="text-xs font-mono text-zinc-100 font-semibold block">
+                            Node Motion {!isPhysicsFrozen ? <span className="text-[10px] text-cyan-400 font-normal">[ACTIVE]</span> : <span className="text-[10px] text-zinc-400 font-normal">[FROZEN]</span>}
                           </span>
-                          <span className="text-[10px] font-mono text-zinc-500">Enable 3D force simulation velocity or lock layout</span>
+                          <span className="text-[10px] font-mono text-zinc-400">Enable 3D force simulation velocity or lock layout</span>
                         </div>
                         <CyberToggle checked={!isPhysicsFrozen} onChange={(active) => setIsPhysicsFrozen(!active)} />
                       </div>
 
                       {/* AUTO SCALE TOGGLE & DENSITY FEEDBACK */}
-                      <div className="col-span-2 flex flex-col gap-1 py-2 border-b border-white/5">
+                      <div className="col-span-2 flex flex-col gap-1 py-2 border-b border-white/10">
                         <div className="flex items-center justify-between">
                           <div>
-                            <span className="text-xs font-mono text-zinc-200 block">Auto Scale</span>
-                            <span className="text-[10px] font-mono text-zinc-500">Dynamically adapt node & text dimensions to vault density</span>
+                            <span className="text-xs font-mono text-zinc-100 font-semibold block">Auto Scale</span>
+                            <span className="text-[10px] font-mono text-zinc-400">Dynamically adapt node & text dimensions to vault density</span>
                           </div>
                           <CyberToggle checked={autoScale} onChange={setAutoScale} />
                         </div>
                         {autoScale && (
-                          <div className="text-[9px] font-mono text-cyan-400/80 mt-0.5">
+                          <div className="text-[9px] font-mono text-cyan-400 font-semibold mt-0.5">
                             Active Vault Multiplier: Node {dynamicNodeScale.toFixed(2)}x | Font {dynamicFontScale}% ({nodes.length} nodes)
                           </div>
                         )}
                       </div>
 
-                      <div className="flex items-center justify-between py-2 border-b border-white/5">
+                      <div className="flex items-center justify-between py-2 border-b border-white/10">
                         <div>
-                          <span className="text-xs font-mono text-zinc-200 block">Auto Layout</span>
-                          <span className="text-[10px] font-mono text-zinc-500">Radial repulsion layout calculation</span>
+                          <span className="text-xs font-mono text-zinc-100 font-semibold block">Auto Layout</span>
+                          <span className="text-[10px] font-mono text-zinc-400">Radial repulsion layout calculation</span>
                         </div>
                         <CyberToggle 
                           checked={autoLayout} 
@@ -2815,10 +2818,10 @@ function NeuralGraphDashboardInner() {
                         />
                       </div>
 
-                      <div className="flex items-center justify-between py-2 border-b border-white/5">
+                      <div className="flex items-center justify-between py-2 border-b border-white/10">
                         <div>
-                          <span className="text-xs font-mono text-zinc-200 block">Node Labels</span>
-                          <span className="text-[10px] font-mono text-zinc-500">Render floating monospace text tags</span>
+                          <span className="text-xs font-mono text-zinc-100 font-semibold block">Node Labels</span>
+                          <span className="text-[10px] font-mono text-zinc-400">Render floating monospace text tags</span>
                         </div>
                         <CyberToggle 
                           checked={fileLabels} 
@@ -2829,42 +2832,42 @@ function NeuralGraphDashboardInner() {
                         />
                       </div>
 
-                      <div className="flex items-center justify-between py-2 border-b border-white/5">
+                      <div className="flex items-center justify-between py-2 border-b border-white/10">
                         <div>
-                          <span className="text-xs font-mono text-zinc-200 block">Show Folders</span>
-                          <span className="text-[10px] font-mono text-zinc-500">Display directory cluster nodes</span>
+                          <span className="text-xs font-mono text-zinc-100 font-semibold block">Show Folders</span>
+                          <span className="text-[10px] font-mono text-zinc-400">Display directory cluster nodes</span>
                         </div>
                         <CyberToggle checked={showFolders} onChange={setShowFolders} />
                       </div>
 
-                      <div className="flex items-center justify-between py-2 border-b border-white/5">
+                      <div className="flex items-center justify-between py-2 border-b border-white/10">
                         <div>
-                          <span className="text-xs font-mono text-zinc-200 block">Show Dependencies</span>
-                          <span className="text-[10px] font-mono text-zinc-500">Render package and manifest links</span>
+                          <span className="text-xs font-mono text-zinc-100 font-semibold block">Show Dependencies</span>
+                          <span className="text-[10px] font-mono text-zinc-400">Render package and manifest links</span>
                         </div>
                         <CyberToggle checked={showDeps} onChange={setShowDeps} />
                       </div>
 
-                      <div className="flex items-center justify-between py-2 border-b border-white/5">
+                      <div className="flex items-center justify-between py-2 border-b border-white/10">
                         <div>
-                          <span className="text-xs font-mono text-zinc-200 block">Code Dependency Analysis</span>
-                          <span className="text-[10px] font-mono text-zinc-500">Map deep import and invocation edges between files</span>
+                          <span className="text-xs font-mono text-zinc-100 font-semibold block">Code Dependency Analysis</span>
+                          <span className="text-[10px] font-mono text-zinc-400">Map deep import and invocation edges between files</span>
                         </div>
                         <CyberToggle checked={showCodeDependencies} onChange={setShowCodeDependencies} />
                       </div>
 
-                      <div className="flex items-center justify-between py-2 border-b border-white/5">
+                      <div className="flex items-center justify-between py-2 border-b border-white/10">
                         <div>
-                          <span className="text-xs font-mono text-zinc-200 block">Highlight Dependency Links</span>
-                          <span className="text-[10px] font-mono text-zinc-500">Color-code AST import edges (Neon Fuchsia/Amber glow)</span>
+                          <span className="text-xs font-mono text-zinc-100 font-semibold block">Highlight Dependency Links</span>
+                          <span className="text-[10px] font-mono text-zinc-400">Color-code AST import edges (Neon Fuchsia/Amber glow)</span>
                         </div>
                         <CyberToggle checked={highlightDependencyEdges} onChange={setHighlightDependencyEdges} />
                       </div>
 
                       <div className="flex flex-col gap-1">
                         <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-mono text-zinc-500">Node Size ({nodeSize.toFixed(1)}x)</span>
-                          {autoScale && <span className="text-[8px] font-mono text-cyan-400/70">[Auto-scaled: {dynamicNodeScale.toFixed(2)}x]</span>}
+                          <span className="text-xs font-mono text-zinc-100 font-semibold">Node Size ({nodeSize.toFixed(1)}x)</span>
+                          {autoScale && <span className="text-[8px] font-mono text-cyan-400/80 font-bold">[Auto: {dynamicNodeScale.toFixed(2)}x]</span>}
                         </div>
                         <input
                           type="range"
@@ -2876,15 +2879,15 @@ function NeuralGraphDashboardInner() {
                           className="w-full accent-cyan-500"
                         />
                       </div>
-                      <div className="flex items-center justify-between py-2 border-b border-white/5">
+                      <div className="flex items-center justify-between py-2 border-b border-white/10">
                         <div>
-                          <span className="text-xs font-mono text-zinc-200 block">Edge Visibility</span>
-                          <span className="text-[10px] font-mono text-zinc-500">Render 3D link lines between nodes</span>
+                          <span className="text-xs font-mono text-zinc-100 font-semibold block">Edge Visibility</span>
+                          <span className="text-[10px] font-mono text-zinc-400">Render 3D link lines between nodes</span>
                         </div>
                         <CyberToggle checked={edgeVisibility} onChange={setEdgeVisibility} />
                       </div>
                       <div className="flex flex-col gap-1">
-                        <span className="text-[10px] font-mono text-zinc-500">Edge Opacity ({Math.round(edgeOpacity * 100)}%)</span>
+                        <span className="text-xs font-mono text-zinc-100 font-semibold">Edge Opacity ({Math.round(edgeOpacity * 100)}%)</span>
                         <input
                           type="range"
                           min="0.05"
@@ -2896,7 +2899,7 @@ function NeuralGraphDashboardInner() {
                         />
                       </div>
                       <div className="flex flex-col gap-1">
-                        <span className="text-[10px] font-mono text-zinc-500">Simulation Speed ({animSpeed.toFixed(1)}x)</span>
+                        <span className="text-xs font-mono text-zinc-100 font-semibold">Simulation Speed ({animSpeed.toFixed(1)}x)</span>
                         <input
                           type="range"
                           min="0.1"
@@ -2911,25 +2914,25 @@ function NeuralGraphDashboardInner() {
                           className="w-full accent-cyan-500"
                         />
                       </div>
-                      <div className="col-span-2 flex items-center justify-between pt-2 border-t border-white/5 gap-2">
+                      <div className="col-span-2 flex items-center justify-between pt-3 border-t border-white/10 gap-2">
                         <button
                           type="button"
                           onClick={handleResetSettings}
-                          className="flex-1 bg-zinc-900 hover:bg-cyan-950/40 border border-zinc-700 hover:border-cyan-500 text-zinc-300 hover:text-cyan-300 text-[10px] font-mono py-1.5 rounded transition-colors"
+                          className="flex-1 bg-[#0B0B16] hover:bg-cyan-950/40 border border-white/20 hover:border-cyan-400 text-zinc-100 hover:text-cyan-300 text-[10px] font-mono font-semibold py-1.5 rounded-lg transition-all"
                         >
                           [ ↺ RESET SETTINGS ]
                         </button>
                         <button
                           type="button"
                           onClick={handleResimulate}
-                          className="flex-1 bg-zinc-900 hover:bg-purple-950/40 border border-zinc-700 hover:border-purple-500 text-zinc-300 hover:text-purple-300 text-[10px] font-mono py-1.5 rounded transition-colors"
+                          className="flex-1 bg-[#0B0B16] hover:bg-purple-950/40 border border-white/20 hover:border-purple-400 text-zinc-100 hover:text-purple-300 text-[10px] font-mono font-semibold py-1.5 rounded-lg transition-all"
                         >
                           [ RE-SIMULATE LAYOUT ]
                         </button>
                         <button
                           type="button"
                           onClick={handleResetCamera}
-                          className="flex-1 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 text-[10px] font-mono py-1.5 rounded transition-colors"
+                          className="flex-1 bg-[#0B0B16] hover:bg-zinc-800 border border-white/20 hover:border-white/40 text-zinc-100 hover:text-white text-[10px] font-mono font-semibold py-1.5 rounded-lg transition-all"
                         >
                           [ RESET CAMERA ]
                         </button>
@@ -2939,45 +2942,45 @@ function NeuralGraphDashboardInner() {
 
                   {settingsTab === 'SPARK_AI' && (
                     <>
-                      <div className="flex items-center justify-between py-2 border-b border-white/5">
+                      <div className="flex items-center justify-between py-2 border-b border-white/10">
                         <div>
-                          <span className="text-xs font-mono text-zinc-200 block">Spark AI Engine</span>
-                          <span className="text-[10px] font-mono text-zinc-500">Master visibility for orb, model, & prompts</span>
+                          <span className="text-xs font-mono text-zinc-100 font-semibold block">Spark AI Engine</span>
+                          <span className="text-[10px] font-mono text-zinc-400">Master visibility for orb, model, & prompts</span>
                         </div>
                         <CyberToggle checked={isSparkAiEnabled} onChange={setIsSparkAiEnabled} />
                       </div>
-                      <div className="flex items-center justify-between py-2 border-b border-white/5">
+                      <div className="flex items-center justify-between py-2 border-b border-white/10">
                         <div>
-                          <span className="text-xs font-mono text-zinc-200 block">Auto-Analyze Selected</span>
-                          <span className="text-[10px] font-mono text-zinc-500">Trigger immediate AST scan on click</span>
+                          <span className="text-xs font-mono text-zinc-100 font-semibold block">Auto-Analyze Selected</span>
+                          <span className="text-[10px] font-mono text-zinc-400">Trigger immediate AST scan on click</span>
                         </div>
                         <CyberToggle checked={autoAnalyze} onChange={setAutoAnalyze} />
                       </div>
-                      <div className="flex items-center justify-between py-2 border-b border-white/5">
+                      <div className="flex items-center justify-between py-2 border-b border-white/10">
                         <div>
-                          <span className="text-xs font-mono text-zinc-200 block">Chat Caching</span>
-                          <span className="text-[10px] font-mono text-zinc-500">Persist session history across queries</span>
+                          <span className="text-xs font-mono text-zinc-100 font-semibold block">Chat Caching</span>
+                          <span className="text-[10px] font-mono text-zinc-400">Persist session history across queries</span>
                         </div>
                         <CyberToggle checked={chatCaching} onChange={setChatCaching} />
                       </div>
                       <div className="flex flex-col gap-1">
-                        <span className="text-[10px] font-mono text-zinc-500">Response Style</span>
+                        <span className="text-xs font-mono text-zinc-100 font-semibold">Response Style</span>
                         <div className="flex gap-2">
-                          {['Concise', 'Detailed'].map(t => <button key={t} onClick={() => setResponseStyle(t)} className={`px-2 py-1 text-[10px] font-mono rounded border transition-colors ${responseStyle === t ? 'bg-cyan-900/30 border-cyan-500 text-white' : 'bg-zinc-900 border-zinc-800 text-zinc-400'}`}>[ {t} ]</button>)}
+                          {['Concise', 'Detailed'].map(t => <button key={t} onClick={() => setResponseStyle(t)} className={`px-2.5 py-1 text-[10px] font-mono rounded-lg border transition-all ${responseStyle === t ? 'bg-cyan-950/40 border-cyan-400 text-cyan-300 shadow-[0_0_8px_rgba(6,182,212,0.2)]' : 'bg-[#0B0B16] border-white/15 text-zinc-400 hover:text-white'}`}>[ {t} ]</button>)}
                         </div>
                       </div>
                       <div className="flex flex-col gap-1">
-                        <span className="text-[10px] font-mono text-zinc-500">Analysis Depth</span>
+                        <span className="text-xs font-mono text-zinc-100 font-semibold">Analysis Depth</span>
                         <div className="flex gap-2">
-                          {['Basic', 'Deep'].map(t => <button key={t} onClick={() => setAnalysisDepth(t)} className={`px-2 py-1 text-[10px] font-mono rounded border transition-colors ${analysisDepth === t ? 'bg-cyan-900/30 border-cyan-500 text-white' : 'bg-zinc-900 border-zinc-800 text-zinc-400'}`}>[ {t} ]</button>)}
+                          {['Basic', 'Deep'].map(t => <button key={t} onClick={() => setAnalysisDepth(t)} className={`px-2.5 py-1 text-[10px] font-mono rounded-lg border transition-all ${analysisDepth === t ? 'bg-cyan-950/40 border-cyan-400 text-cyan-300 shadow-[0_0_8px_rgba(6,182,212,0.2)]' : 'bg-[#0B0B16] border-white/15 text-zinc-400 hover:text-white'}`}>[ {t} ]</button>)}
                         </div>
                       </div>
                       <div className="flex flex-col gap-1">
-                        <span className="text-[10px] font-mono text-zinc-500">Context Window Size (Tokens)</span>
-                        <input type="number" value={contextSize} onChange={e => setContextSize(Number(e.target.value))} className="bg-zinc-900 border border-zinc-800 text-white text-[10px] font-mono px-2 py-1 rounded" />
+                        <span className="text-xs font-mono text-zinc-100 font-semibold">Context Window Size (Tokens)</span>
+                        <input type="number" value={contextSize} onChange={e => setContextSize(Number(e.target.value))} className="bg-[#0B0B16] border border-white/20 text-white text-[10px] font-mono px-2.5 py-1.5 rounded-lg focus:border-cyan-400 focus:outline-none" />
                       </div>
                       <div className="col-span-2 mt-2">
-                        <button onClick={() => { (window as any).chatHistory = []; setChatHistory(false); setContextSize(0); setToastMessage('AGENT CONTEXT WIPED'); setTimeout(() => setToastMessage(''), 3000); }} className="w-full bg-purple-900/20 hover:bg-purple-900/40 border border-purple-900/50 text-purple-400 text-[10px] font-mono py-2 rounded transition-colors">
+                        <button onClick={() => { (window as any).chatHistory = []; setChatHistory(false); setContextSize(0); setToastMessage('AGENT CONTEXT WIPED'); setTimeout(() => setToastMessage(''), 3000); }} className="w-full bg-[#0B0B16] hover:bg-purple-900/30 border border-purple-500/30 text-purple-300 hover:text-purple-200 text-[10px] font-mono py-2 rounded-lg transition-all font-semibold">
                           [ WIPE AGENT CONTEXT ]
                         </button>
                       </div>
