@@ -91,7 +91,7 @@ export function ConsoleDashboardShell() {
         {/* SETTINGS DRAGGABLE OVERLAY */}
         {activeConsoleTab === 'SETTINGS' && (
           <div 
-            className="fixed inset-0 z-50 flex items-start justify-center pt-20 pb-10 bg-black/40 backdrop-blur-sm p-4 overflow-y-auto"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 select-none"
             onClick={(e) => {
               if (e.target === e.currentTarget) setActiveConsoleTab('HISTORY');
             }}
@@ -100,7 +100,7 @@ export function ConsoleDashboardShell() {
               initial={{ opacity: 0, scale: 0.95, y: -20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: -20 }}
-              className="relative w-[520px] max-w-[95vw] bg-[#0C0C18]/95 border border-purple-500/30 rounded-2xl shadow-[0_0_40px_rgba(168,85,247,0.2)] flex flex-col overflow-hidden font-mono select-none -translate-y-4 max-h-[85vh]"
+              className="relative w-[520px] max-w-[95vw] max-h-[85vh] bg-[#0C0C18]/95 border border-purple-500/30 rounded-2xl shadow-[0_0_40px_rgba(168,85,247,0.2)] flex flex-col overflow-hidden font-mono -translate-y-6"
             >
               {/* Header */}
               <div className="flex items-center justify-between p-4 border-b border-purple-500/20 bg-[#0F0F1A]">
