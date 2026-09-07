@@ -11,3 +11,5 @@ build/
 renderer/.next/
 renderer/out/
 main/dist/
+downloads/
+

@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --app-font-scale: 100%;
+  --glow-opacity: 1;
+  --particles-opacity: 1;
+}
+
 @layer base {
   /* Enforce native app experience */
   html, body {
@@ -13,6 +19,7 @@
     background-color: #020204; /* Fallback Deep Space Obsidian */
     color: #F3F4F6;
     font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: var(--app-font-scale, 100%);
     -webkit-user-select: none;
     user-select: none;
     cursor: default;
@@ -80,4 +87,74 @@
   .titlebar-no-drag {
     -webkit-app-region: no-drag;
   }
+}
+
+/* ========================================================================= */
+/* GLOW & ANIMATION CONTROLS (DISABLE-GLOW-EFFECTS SUPPRESSION)              */
+/* ========================================================================= */
+html.disable-glow-effects,
+body.disable-glow-effects,
+.disable-glow-effects,
+html.no-glow-animations,
+body.no-glow-animations,
+.no-glow-animations {
+  --glow-opacity: 0 !important;
+}
+
+.disable-glow-effects,
+.disable-glow-effects *,
+.disable-glow-effects *::before,
+.disable-glow-effects *::after,
+.no-glow-animations,
+.no-glow-animations *,
+.no-glow-animations *::before,
+.no-glow-animations *::after {
+  box-shadow: none !important;
+  text-shadow: none !important;
+  filter: none !important;
+  animation: none !important;
+}
+
+.disable-glow-effects .shadow-purple-glow,
+.disable-glow-effects .shadow-blue-glow,
+.disable-glow-effects .shadow-green-glow,
+.disable-glow-effects .shadow-2xl,
+.disable-glow-effects .shadow-xl,
+.disable-glow-effects .shadow-lg,
+.disable-glow-effects .shadow-md,
+.disable-glow-effects .glass-panel,
+.disable-glow-effects .glass-panel-hover:hover,
+.no-glow-animations .shadow-purple-glow,
+.no-glow-animations .shadow-blue-glow,
+.no-glow-animations .shadow-green-glow,
+.no-glow-animations .shadow-2xl,
+.no-glow-animations .shadow-xl,
+.no-glow-animations .shadow-lg,
+.no-glow-animations .shadow-md,
+.no-glow-animations .glass-panel,
+.no-glow-animations .glass-panel-hover:hover {
+  box-shadow: none !important;
+  text-shadow: none !important;
+  filter: none !important;
+}
+
+.disable-glow-effects .animate-pulse,
+.disable-glow-effects .animate-spin,
+.disable-glow-effects .animate-bounce,
+.disable-glow-effects .animate-ping,
+.disable-glow-effects .animate-fade-in,
+.disable-glow-effects .animate-scale-up,
+.disable-glow-effects .animate-loading-bar,
+.disable-glow-effects [class*="animate-"],
+.no-glow-animations .animate-pulse,
+.no-glow-animations .animate-spin,
+.no-glow-animations .animate-bounce,
+.no-glow-animations .animate-ping,
+.no-glow-animations .animate-fade-in,
+.no-glow-animations .animate-scale-up,
+.no-glow-animations .animate-loading-bar,
+.no-glow-animations [class*="animate-"] {
+  animation: none !important;
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
 }

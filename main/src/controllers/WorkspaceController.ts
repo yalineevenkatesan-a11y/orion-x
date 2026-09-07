@@ -1,34 +1,53 @@
 import { ipcMain, dialog } from 'electron';
+import * as fs from 'fs';
+import * as path from 'path';
 import { WorkspaceService } from '../services/WorkspaceService';
 import { DatabaseEngine } from '../database/DatabaseEngine';
 import crypto from 'crypto';
 import { execSync } from 'child_process';
 
 export interface OrionGraphNode {
-  id: string;          
-  name: string;        
-  path: string;        
+  id: string;
+  name: string;
+  path: string;
   type: 'file' | 'folder' | 'function' | 'class' | 'component' | 'dependency' | 'package' | 'config' | 'test' | 'documentation' | 'asset';
-  extension: string;   
+  extension: string;
   parentId: string | null;
   childrenIds: string[];
-  size: number;        
-  LOC: number;         
+  size: number;
+  LOC: number;
   health: 'healthy' | 'warning' | 'critical' | 'unknown';
   risk: 'low' | 'medium' | 'high' | 'critical';
   complexity: { loc: number; functions: number; classes: number; imports: number; dependencies: number; score: number; };
-  dependencies: string[]; 
-  dependents: string[];   
-  imports: string[];      
+  dependencies: string[];
+  dependents: string[];
+  imports: string[];
   importedBy: string[];
   issues: Array<{ id: string; type: string; severity: string; message: string; line?: number; }>;
   git: { status: 'added' | 'modified' | 'deleted' | 'renamed' | 'unchanged'; lastModified: string; author: string; ageDays: number; };
-  label: string; 
+  label: string;
   isDir: boolean;
   relativePath: string;
 }
 
+export interface OrionGraphEdge {
+  source: string;
+  target: string;
+  isCodeDependency?: boolean;
+  type?: 'HIERARCHY' | 'IMPORT_DEPENDENCY' | string;
+}
+
 export function initializeWorkspaceController(): void {
+  ipcMain.handle('workspace:getGraphData', async (_event, directoryPath: string) => {
+    try {
+      const { generateWorkspaceGraphData } = require('./FileController');
+      return await generateWorkspaceGraphData(directoryPath);
+    } catch (err) {
+      console.error('Failed to read directory graph via workspace controller:', err);
+      return { nodes: [], edges: [] };
+    }
+  });
+
   // Create a new thread
   ipcMain.handle('workspace:createThread', async (_event, ...args: any[]) => {
     let id = '';
@@ -95,6 +114,8 @@ export function initializeWorkspaceController(): void {
     return WorkspaceService.addMessage(id, threadId, role, content);
   });
 
+  // workspace:readFile is registered in main entry point (index.ts)
+
   // Open directory selection dialog
   ipcMain.handle('workspace:open-dialog', async () => {
     try {
@@ -137,17 +158,17 @@ export function initializeWorkspaceController(): void {
       // Intercept and auto-route Git cloning if a URL is detected
       if (gitUrl || pathVal.startsWith('http://') || pathVal.startsWith('https://')) {
         const targetUrl = gitUrl || pathVal;
-        
+
         // Extract a clean repository name from the URL if not explicitly provided
         let repoName = name;
         if (!repoName) {
-           const urlParts = targetUrl.split('/');
-           repoName = urlParts[urlParts.length - 1].replace('.git', '');
+          const urlParts = targetUrl.split('/');
+          repoName = urlParts[urlParts.length - 1].replace('.git', '');
         }
 
         const downloadBase = 'C:\\Users\\asus\\.gemini\\antigravity\\scratch\\orion-x-studio\\downloads\\cloned-repo';
         await fs.mkdir(downloadBase, { recursive: true });
-        
+
         const targetClonePath = path.join(downloadBase, repoName);
 
         // Natively pull down the remote repository
@@ -158,7 +179,7 @@ export function initializeWorkspaceController(): void {
           console.warn(`[WorkspaceController] Standard 'git' command failed. Falling back to absolute path execution...`, gitErr);
           await execAsync(`"C:\\Program Files\\Git\\cmd\\git.exe" clone ${targetUrl} "${targetClonePath}"`);
         }
-        
+
         // Ensure our active pointer aligns directly with the new local folder
         pathVal = targetClonePath;
         name = repoName;
@@ -170,7 +191,7 @@ export function initializeWorkspaceController(): void {
 
       const dbEngine = DatabaseEngine.getInstance();
       const data = dbEngine.readData();
-      
+
       const newWorkspace = {
         id,
         name,
@@ -178,7 +199,7 @@ export function initializeWorkspaceController(): void {
         git_url: gitUrl,
         created_at: createdAt
       };
-      
+
       data.workspaces.push(newWorkspace);
       dbEngine.writeData(data);
 

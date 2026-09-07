@@ -1,11 +1,98 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useWorkspaceUi } from '@/context/WorkspaceUiContext';
+import { DatasetExplorer, isDatasetFile } from './DatasetExplorer';
 
 export function FileInspector() {
   const { selectedNode, setSelectedNode, setActiveFileContext } = useWorkspaceUi();
+  const [content, setContent] = useState<string>(selectedNode?.fileContent || '');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  const fileName = selectedNode?.label || selectedNode?.name || selectedNode?.path || 'Unknown';
+  const isDataset = isDatasetFile(fileName);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadFileContent = async (node: any) => {
+      if (!node) {
+        setContent('');
+        setIsLoading(false);
+        return;
+      }
+
+      if (node.isDir || node.type === 'DIRECTORY' || node.type === 'folder' || node.type === 'dir') {
+        setContent(`// DIRECTORY: ${node.label || fileName}\nDirectory node selected. Use tree explorer to browse contents.`);
+        setIsLoading(false);
+        return;
+      }
+
+      if (node.fileContent) {
+        setContent(node.fileContent);
+        setIsLoading(false);
+        return;
+      }
+
+      if (!node.path) {
+        setContent('// No file path provided.');
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const reader = (window as any).electronAPI?.readFile 
+          || (window as any).electronAPI?.workspace?.readFile
+          || ((p: string) => (window as any).electron?.invoke?.('workspace:readFile', p))
+          || ((p: string) => (window as any).electron?.readFile?.(p))
+          || ((p: string) => (window as any).electron?.ipcRenderer?.invoke?.('workspace:readFile', p))
+          || ((p: string) => (window as any).api?.workspace?.readFile?.(p));
+
+        if (!reader) {
+          setContent('// Electron IPC bridge unavailable.');
+          setIsLoading(false);
+          return;
+        }
+
+        const res = await reader(node.path);
+
+        if (!isMounted) return;
+
+        if (res?.isDirectory) {
+          setContent(res.content || `// DIRECTORY: ${node.label || fileName}`);
+          setSelectedNode((prev: any) => prev && prev.id === node.id ? { ...prev, fileContent: res.content } : prev);
+          setActiveFileContext(`[Directory: ${node.label || fileName}]\n${res.content}`);
+        } else if (res?.success && typeof res.content === 'string') {
+          setContent(res.content);
+          setSelectedNode((prev: any) => prev && prev.id === node.id ? { ...prev, fileContent: res.content } : prev);
+          setActiveFileContext(`[File: ${node.label || fileName}]\n${res.content}`);
+        } else if (typeof res === 'string') {
+          setContent(res);
+          setSelectedNode((prev: any) => prev && prev.id === node.id ? { ...prev, fileContent: res } : prev);
+          setActiveFileContext(`[File: ${node.label || fileName}]\n${res}`);
+        } else if (res?.content) {
+          setContent(res.content);
+          setSelectedNode((prev: any) => prev && prev.id === node.id ? { ...prev, fileContent: res.content } : prev);
+          setActiveFileContext(`[File: ${node.label || fileName}]\n${res.content}`);
+        } else {
+          setContent(`// Error loading file:\n// Path: ${node.path}\n// Reason: ${res?.error || 'Unknown'}`);
+        }
+      } catch (err: any) {
+        if (!isMounted) return;
+        setContent(`// IPC Failure: ${err?.message || 'Unknown IPC error'}\n// Path: ${node.path}`);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+
+    if (selectedNode) {
+      loadFileContent(selectedNode);
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedNode?.id, selectedNode?.path, selectedNode?.fileContent]);
 
   if (!selectedNode) return null;
 
@@ -19,6 +106,8 @@ export function FileInspector() {
     setSelectedNode(null);
     setActiveFileContext(null);
   };
+
+  const displayContent = content || selectedNode.fileContent || '';
 
   return (
     <motion.div
@@ -36,6 +125,10 @@ export function FileInspector() {
             <span className="text-[9px] font-mono text-red-400 uppercase tracking-widest mt-0.5 animate-pulse">
               SECURITY INTRUSION WARNING
             </span>
+          ) : isDataset ? (
+            <span className="text-[9px] font-mono text-cyan-400 uppercase tracking-widest mt-0.5">
+              STRUCTURED DATASET EXPLORER
+            </span>
           ) : (
             <span className="text-[9px] font-mono text-cyan-400 uppercase tracking-widest mt-0.5">
               {selectedNode.isDir ? 'DIRECTORY CONTEXT' : 'SOURCE CODE VIEW'}
@@ -44,13 +137,13 @@ export function FileInspector() {
         </div>
         <button 
           onClick={handleClose}
-          className="text-gray-500 hover:text-white transition-colors duration-200 text-xs font-mono"
+          className="text-gray-500 hover:text-white transition-colors duration-200 text-xs font-mono cursor-pointer"
         >
           CLOSE
         </button>
       </div>
 
-      <div className="flex-1 flex flex-col gap-3 overflow-y-auto pr-1">
+      <div className="flex-1 flex flex-col gap-3 overflow-y-auto pr-1 min-h-0">
         {(selectedNode.health === 'critical' || selectedNode.health === 'warning') ? (
           <>
             {selectedNode.oldCode && selectedNode.newCode && (
@@ -88,13 +181,18 @@ export function FileInspector() {
               </ul>
             </div>
           </>
-        ) : selectedNode.fileContent ? (
+        ) : isDataset ? (
+          <DatasetExplorer
+            content={displayContent}
+            fileName={fileName}
+          />
+        ) : displayContent ? (
           <div className="flex-1 flex flex-col bg-white/5 border border-white/10 rounded-xl overflow-hidden min-h-[150px]">
             <div className="bg-black/40 px-3 py-1.5 border-b border-white/10 select-none">
                <span className="font-mono text-[9px] font-bold text-gray-400 uppercase">RAW FILE CONTENT</span>
             </div>
             <pre className="p-3 font-mono text-[10px] text-gray-300 leading-relaxed overflow-auto whitespace-pre select-text h-full font-light">
-              <code>{selectedNode.fileContent}</code>
+              <code>{displayContent}</code>
             </pre>
           </div>
         ) : selectedNode.isDir ? (
@@ -103,12 +201,21 @@ export function FileInspector() {
               Directory Node selected. Expand child nodes to inspect source files.
             </span>
           </div>
-        ) : (
+        ) : isLoading ? (
           <div className="flex-1 flex items-center justify-center text-center p-6 flex-col gap-3">
             <span className="w-6 h-6 rounded-full border-t-2 border-cyber-500 animate-spin" />
             <span className="text-[10px] font-mono text-gray-500 tracking-widest uppercase">
               Loading File Stream...
             </span>
+          </div>
+        ) : (
+          <div className="flex-1 flex flex-col bg-white/5 border border-white/10 rounded-xl overflow-hidden min-h-[150px]">
+            <div className="bg-black/40 px-3 py-1.5 border-b border-white/10 select-none">
+               <span className="font-mono text-[9px] font-bold text-gray-400 uppercase">RAW FILE CONTENT</span>
+            </div>
+            <pre className="p-3 font-mono text-[10px] text-gray-300 leading-relaxed overflow-auto whitespace-pre select-text h-full font-light">
+              <code>{'// No source content available'}</code>
+            </pre>
           </div>
         )}
       </div>
@@ -116,14 +223,14 @@ export function FileInspector() {
       <div className="border-t border-white/5 pt-3 flex gap-3 select-none shrink-0">
         <button
           onClick={handleClose}
-          className="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl py-2 font-mono text-[10px] font-bold uppercase text-gray-400 tracking-wider transition-colors duration-200"
+          className="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl py-2 font-mono text-[10px] font-bold uppercase text-gray-400 tracking-wider transition-colors duration-200 cursor-pointer"
         >
           {selectedNode.health === 'critical' ? 'Discard' : 'Close Viewer'}
         </button>
         {selectedNode.health === 'critical' && (
           <button
             onClick={handleFixNode}
-            className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 border border-green-400/20 shadow-green-glow rounded-xl py-2 font-mono text-[10px] font-bold uppercase text-white tracking-wider hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+            className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 border border-green-400/20 shadow-green-glow rounded-xl py-2 font-mono text-[10px] font-bold uppercase text-white tracking-wider hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer"
           >
             ✔ Fix Vulnerability
           </button>

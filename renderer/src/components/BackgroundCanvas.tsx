@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
+import { useApp } from '@/context/AppContext';
 
 interface Particle {
   x: number;
@@ -12,9 +13,11 @@ interface Particle {
 }
 
 export function BackgroundCanvas() {
+  const { particlesEnabled } = useApp();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
+    if (!particlesEnabled) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -93,7 +96,7 @@ export function BackgroundCanvas() {
       <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.003)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.003)_1px,transparent_1px)] bg-[size:40px_40px]" />
 
       {/* Floating particles canvas */}
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full opacity-60" />
+      {particlesEnabled && <canvas ref={canvasRef} className="absolute inset-0 w-full h-full opacity-60" />}
     </div>
   );
 }

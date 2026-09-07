@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useRef, useEffect } from 'react';
+import { useApp } from '@/context/AppContext';
 
 interface Node {
   x: number;
@@ -15,9 +16,11 @@ interface NeuralNodesProps {
 }
 
 export function NeuralNodes({ isInitialized }: NeuralNodesProps) {
+  const { particlesEnabled, glowEnabled } = useApp();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
+    if (!particlesEnabled) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -78,7 +81,7 @@ export function NeuralNodes({ isInitialized }: NeuralNodesProps) {
       }
 
       // Draw nodes with glowing effect
-      ctx.shadowBlur = 6;
+      ctx.shadowBlur = glowEnabled ? 6 : 0;
       for (let i = 0; i < nodes.length; i++) {
         const node = nodes[i];
         
@@ -112,7 +115,9 @@ export function NeuralNodes({ isInitialized }: NeuralNodesProps) {
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener('resize', resizeCanvas);
     };
-  }, [isInitialized]);
+  }, [isInitialized, particlesEnabled, glowEnabled]);
+
+  if (!particlesEnabled) return null;
 
   return (
     <canvas

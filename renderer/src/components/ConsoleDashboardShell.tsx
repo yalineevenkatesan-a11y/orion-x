@@ -2,19 +2,25 @@
 
 import React, { useState } from 'react';
 import { useConsoleUi } from '@/context/ConsoleUiContext';
+import { useApp } from '@/context/AppContext';
 import { ConsoleSidebar } from './ConsoleSidebar';
 import { WorkspaceLayout } from './workspace/WorkspaceLayout';
 import { motion } from 'framer-motion';
 
 export function ConsoleDashboardShell() {
   const { activeConsoleTab, setActiveConsoleTab } = useConsoleUi();
+  const {
+    glowEnabled,
+    setGlowEnabled,
+    particlesEnabled,
+    setParticlesEnabled,
+    fontScale,
+    setFontScale,
+  } = useApp();
 
   const [settingsActiveTab, setSettingsActiveTab] = useState("appearance");
   const [theme, setTheme] = useState('Dark');
   const [uiDensity, setUiDensity] = useState('Compact');
-  const [glowEnabled, setGlowEnabled] = useState(true);
-  const [particlesEnabled, setParticlesEnabled] = useState(true);
-  const [fontSize, setFontSize] = useState(12);
   
   const [autoLayout, setAutoLayout] = useState(true);
   const [nodeSize, setNodeSize] = useState(1);
@@ -84,23 +90,26 @@ export function ConsoleDashboardShell() {
 
         {/* SETTINGS DRAGGABLE OVERLAY */}
         {activeConsoleTab === 'SETTINGS' && (
-          <div className="absolute inset-0 z-[100] pointer-events-none flex items-center justify-center">
+          <div 
+            className="fixed inset-0 z-50 flex items-start justify-center pt-20 pb-10 bg-black/40 backdrop-blur-sm p-4 overflow-y-auto"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setActiveConsoleTab('HISTORY');
+            }}
+          >
             <motion.div
-              drag
-              dragMomentum={false}
               initial={{ opacity: 0, scale: 0.95, y: -20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: -20 }}
-              className="bg-[#0B0B10] border border-[#1E1E26] rounded-xl shadow-[0_0_30px_rgba(0,0,0,1)] flex flex-col pointer-events-auto w-[650px] overflow-hidden absolute"
+              className="relative w-[520px] max-w-[95vw] bg-[#0C0C18]/95 border border-purple-500/30 rounded-2xl shadow-[0_0_40px_rgba(168,85,247,0.2)] flex flex-col overflow-hidden font-mono select-none -translate-y-4 max-h-[85vh]"
             >
               {/* Header */}
-              <div className="flex items-center justify-between p-4 border-b border-[#1E1E26] bg-[#0F0F16] drag-handle cursor-move">
+              <div className="flex items-center justify-between p-4 border-b border-purple-500/20 bg-[#0F0F1A]">
                 <span className="text-[13px] font-mono font-bold tracking-widest text-cyan-400">[ PREMIUM SETTINGS MATRIX ]</span>
-                <button onClick={() => setActiveConsoleTab('HISTORY')} className="text-zinc-500 hover:text-red-400 font-mono text-[13px] px-2 py-1 border border-zinc-800 rounded bg-zinc-900 transition-colors">[x]</button>
+                <button onClick={() => setActiveConsoleTab('HISTORY')} className="text-zinc-400 hover:text-red-400 font-mono text-[13px] px-2 py-1 border border-zinc-800 hover:border-red-500/40 rounded bg-zinc-900 transition-colors">[x]</button>
               </div>
               
               {/* TAB NAVIGATION HEADER */}
-              <div className="flex items-center gap-2 px-4 py-3 bg-[#0B0B10] border-b border-[#1E1E26] overflow-x-auto custom-scrollbar">
+              <div className="flex items-center gap-2 px-4 py-3 bg-[#0B0B14] border-b border-purple-500/10 overflow-x-auto custom-scrollbar shrink-0">
                  {['appearance', 'graph', 'ai', 'security'].map((tab) => (
                     <button 
                        key={tab} 
@@ -113,7 +122,7 @@ export function ConsoleDashboardShell() {
               </div>
 
               {/* DYNAMIC TAB RENDER CONTENT */}
-              <div className="p-4 grid grid-cols-2 gap-4 bg-[#0B0B10] max-h-[500px] overflow-y-auto">
+              <div className="p-4 grid grid-cols-2 gap-4 bg-[#0C0C18] flex-1 max-h-[85vh] overflow-y-auto custom-scrollbar">
                 {settingsActiveTab === 'appearance' && (
                   <>
                     <div className="flex flex-col gap-1">
@@ -143,8 +152,48 @@ export function ConsoleDashboardShell() {
                        </div>
                     </div>
                     <div className="flex flex-col gap-1 col-span-2">
-                      <span className="text-[10px] font-mono text-zinc-500">Font Size ({fontSize}px)</span>
-                      <input type="range" min="10" max="18" value={fontSize} onChange={e=>setFontSize(Number(e.target.value))} className="w-full accent-cyan-500" />
+                      <span className="text-[10px] font-mono text-zinc-500">Font Scaling ({fontScale}%)</span>
+                      <input 
+                        type="range" 
+                        min="80" 
+                        max="140" 
+                        step="5" 
+                        value={fontScale} 
+                        onChange={(e) => {
+                          const val = Number(e.target.value);
+                          setFontScale(val);
+                          if (typeof document !== 'undefined') {
+                            document.documentElement.style.fontSize = `${val}%`;
+                            document.documentElement.style.setProperty('--app-font-scale', `${val}%`);
+                          }
+                        }} 
+                        className="w-full accent-cyan-500" 
+                      />
+                    </div>
+                    <div className="col-span-2 pt-3 mt-1 border-t border-[#1E1E26] flex items-center justify-between">
+                      <div className="flex flex-col">
+                        <span className="text-[11px] font-mono font-bold text-zinc-300">Reset Appearance</span>
+                        <span className="text-[9px] font-mono text-zinc-500">Restore theme, glow, particles & font scaling</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTheme('Dark');
+                          setUiDensity('Compact');
+                          setGlowEnabled(true);
+                          setParticlesEnabled(true);
+                          setFontScale(100);
+                          if (typeof document !== 'undefined') {
+                            document.documentElement.style.fontSize = '100%';
+                            document.documentElement.style.setProperty('--app-font-scale', '100%');
+                          }
+                        }}
+                        className="px-3 py-1.5 bg-zinc-900 hover:bg-cyan-950/50 border border-zinc-700 hover:border-cyan-500 text-zinc-300 hover:text-cyan-300 text-[10px] font-mono font-bold rounded transition-colors flex items-center gap-1.5 select-none shadow-sm active:scale-95"
+                        title="Reset Appearance settings to default"
+                      >
+                        <span className="text-cyan-400 font-bold text-xs">↺</span>
+                        <span>[ ↺ RESET DEFAULTS ]</span>
+                      </button>
                     </div>
                   </>
                 )}

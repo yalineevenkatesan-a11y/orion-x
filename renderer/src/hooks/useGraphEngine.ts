@@ -181,6 +181,7 @@ export function useGraphEngine(initialNodes: any[], initialLinks: any[]) {
     activeSearchIndex, setActiveSearchIndex,
     filterMode, setFilterMode,
     criteria: criteria || { view: [], health: [], risk: [], nodeType: [], fileType: [], aiIssues: [], gitStatus: [], complexityThreshold: 0 },
+    setCriteria,
     toggleCriteria, clearAllFilters,
     selectedNodeId, setSelectedNodeId,
     focusNodeId, setFocusNodeId,

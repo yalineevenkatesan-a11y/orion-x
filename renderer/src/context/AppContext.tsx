@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from 'react';
 
 export type AppState = 'splash' | 'home' | 'workspace';
 
@@ -25,7 +25,7 @@ export interface ChatThread {
   createdAt: string; // ISO String
 }
 
-interface AppContextType {
+export interface AppContextType {
   currentAppState: AppState;
   setCurrentAppState: (state: AppState) => void;
   threads: ChatThread[];
@@ -38,14 +38,62 @@ interface AppContextType {
   setCurrentModel: (model: string) => void;
   isSettingsOpen: boolean;
   toggleSettings: () => void;
+  glowEnabled: boolean;
+  setGlowEnabled: (val: boolean) => void;
+  fontScale: number;
+  setFontScale: (val: number) => void;
+  particlesEnabled: boolean;
+  setParticlesEnabled: (val: boolean) => void;
+  starGridActive: boolean;
+  setStarGridActive: (val: boolean) => void;
 }
 
-const AppContext = createContext<AppContextType | undefined>(undefined);
+export const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [currentAppState, setCurrentAppState] = useState<AppState>('splash');
   const [mounted, setMounted] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // Appearance Matrix Settings
+  const [glowEnabled, setGlowEnabledState] = useState<boolean>(true);
+  const [fontScale, setFontScaleState] = useState<number>(100);
+  const [particlesEnabled, setParticlesEnabledState] = useState<boolean>(true);
+  const [starGridActive, setStarGridActiveState] = useState<boolean>(true);
+
+  const setGlowEnabled = useCallback((enabled: boolean) => {
+    setGlowEnabledState(enabled);
+    if (typeof document !== 'undefined') {
+      if (enabled) {
+        document.documentElement.classList.remove('disable-glow-effects', 'no-glow-animations');
+        document.body.classList.remove('disable-glow-effects', 'no-glow-animations');
+        document.documentElement.style.setProperty('--glow-opacity', '1');
+      } else {
+        document.documentElement.classList.add('disable-glow-effects', 'no-glow-animations');
+        document.body.classList.add('disable-glow-effects', 'no-glow-animations');
+        document.documentElement.style.setProperty('--glow-opacity', '0');
+      }
+    }
+  }, []);
+
+  const setFontScale = useCallback((scale: number) => {
+    setFontScaleState(scale);
+    if (typeof document !== 'undefined') {
+      document.documentElement.style.setProperty('--app-font-scale', `${scale}%`);
+      document.documentElement.style.fontSize = `${scale}%`;
+    }
+  }, []);
+
+  const setParticlesEnabled = useCallback((enabled: boolean) => {
+    setParticlesEnabledState(enabled);
+    if (typeof document !== 'undefined') {
+      document.documentElement.style.setProperty('--particles-opacity', enabled ? '1' : '0');
+    }
+  }, []);
+
+  const setStarGridActive = useCallback((active: boolean) => {
+    setStarGridActiveState(active);
+  }, []);
 
   // Core Mappings state
   const [threads, setThreads] = useState<ChatThread[]>([]);
@@ -72,6 +120,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Hydrate states on client mount
   useEffect(() => {
     setMounted(true);
+
+    if (typeof document !== 'undefined') {
+      document.documentElement.style.setProperty('--app-font-scale', `${fontScale}%`);
+      document.documentElement.style.fontSize = `${fontScale}%`;
+      document.documentElement.style.setProperty('--glow-opacity', glowEnabled ? '1' : '0');
+      document.documentElement.style.setProperty('--particles-opacity', particlesEnabled ? '1' : '0');
+      if (!glowEnabled) {
+        document.documentElement.classList.add('disable-glow-effects', 'no-glow-animations');
+        document.body.classList.add('disable-glow-effects', 'no-glow-animations');
+      } else {
+        document.documentElement.classList.remove('disable-glow-effects', 'no-glow-animations');
+        document.body.classList.remove('disable-glow-effects', 'no-glow-animations');
+      }
+    }
 
     const hydrateFromDesktop = async () => {
       if (typeof window === 'undefined' || !window.electronAPI) return;
@@ -411,6 +473,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setCurrentModel: handleModelChange,
         isSettingsOpen,
         toggleSettings,
+        glowEnabled,
+        setGlowEnabled,
+        fontScale,
+        setFontScale,
+        particlesEnabled,
+        setParticlesEnabled,
+        starGridActive,
+        setStarGridActive,
       }}
     >
       {children}
@@ -425,3 +495,5 @@ export function useApp() {
   }
   return context;
 }
+
+export default AppProvider;

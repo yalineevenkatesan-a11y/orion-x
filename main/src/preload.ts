@@ -38,6 +38,8 @@ const aiBindings = {
 };
 
 const electronBindings = {
+  readFile: (filePath: string) => ipcRenderer.invoke('workspace:readFile', filePath),
+  invoke: (channel: string, ...args: any[]) => ipcRenderer.invoke(channel, ...args),
   workspace: workspaceBindings,
   WORKSPACE: workspaceBindings,
   ai: aiBindings,
