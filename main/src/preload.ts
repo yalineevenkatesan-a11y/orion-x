@@ -17,6 +17,8 @@ const workspaceBindings = {
     ipcRenderer.invoke('workspace:open-dialog'),
   readFile: (filePath: string) =>
     ipcRenderer.invoke('workspace:readFile', filePath),
+  gitStatus: (directoryPath: string) =>
+    ipcRenderer.invoke('workspace:gitStatus', directoryPath),
 };
 
 const aiBindings = {

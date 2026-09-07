@@ -48,6 +48,37 @@ export function initializeWorkspaceController(): void {
     }
   });
 
+  ipcMain.handle('workspace:gitStatus', async (_event, directoryPath: string) => {
+    try {
+      if (!directoryPath || !fs.existsSync(directoryPath)) {
+        return { success: false, modifiedFiles: [] };
+      }
+      const output = execSync('git status --porcelain', {
+        cwd: directoryPath,
+        encoding: 'utf8',
+        timeout: 5000,
+        stdio: ['pipe', 'pipe', 'ignore']
+      });
+      const modifiedFiles: string[] = [];
+      const lines = output.split('\n');
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        const filePath = line.substring(3).trim();
+        if (filePath) {
+          const normRel = filePath.replace(/\\/g, '/');
+          const normAbs = path.resolve(directoryPath, filePath).replace(/\\/g, '/');
+          modifiedFiles.push(normRel);
+          modifiedFiles.push(normAbs);
+          modifiedFiles.push(path.basename(filePath));
+        }
+      }
+      return { success: true, modifiedFiles };
+    } catch (err: any) {
+      console.warn('workspace:gitStatus failed or not a git repo:', err?.message || err);
+      return { success: false, modifiedFiles: [] };
+    }
+  });
+
   // Create a new thread
   ipcMain.handle('workspace:createThread', async (_event, ...args: any[]) => {
     let id = '';

@@ -38,6 +38,8 @@ interface GraphNode {
   targetX?: number;
   targetY?: number;
   targetZ?: number;
+  isGitModified?: boolean;
+  git?: { status: string; };
 }
 
 interface GraphLink {
@@ -63,7 +65,14 @@ const CyberToggle: React.FC<CyberToggleProps> = ({ checked, onChange, disabled =
       role="switch"
       aria-checked={checked}
       disabled={disabled}
-      onClick={() => onChange(!checked)}
+      onClick={() => {
+        if (!disabled) {
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('cyber:toggle-sound'));
+          }
+          onChange(!checked);
+        }
+      }}
       className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-300 focus:outline-none ${
         checked
           ? 'bg-cyan-500/30 border border-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.45)]'
@@ -182,7 +191,10 @@ function PhysicsGraph({
   isTreeLayout = false,
   cameraRef,
   showCodeDependencies = true,
-  highlightDependencyEdges = true
+  highlightDependencyEdges = true,
+  enableGitPulse = false,
+  enableSearchHeatmap = false,
+  searchFilter = ''
 }: { 
   nodes: GraphNode[], 
   links: GraphLink[], 
@@ -194,11 +206,14 @@ function PhysicsGraph({
   animSpeed?: number, 
   glowEnabled?: boolean, 
   fontScale?: number, 
-  isPhysicsFrozen?: boolean,
-  isTreeLayout?: boolean,
-  cameraRef?: React.MutableRefObject<any>,
-  showCodeDependencies?: boolean,
-  highlightDependencyEdges?: boolean
+  isPhysicsFrozen?: boolean, 
+  isTreeLayout?: boolean, 
+  cameraRef?: React.MutableRefObject<any>, 
+  showCodeDependencies?: boolean, 
+  highlightDependencyEdges?: boolean,
+  enableGitPulse?: boolean,
+  enableSearchHeatmap?: boolean,
+  searchFilter?: string
 }) {
   const nodeRefs = useRef<{ [key: string]: THREE.Mesh | null }>({});
   const { useFrame, useThree } = require('@react-three/fiber');
@@ -330,6 +345,9 @@ function PhysicsGraph({
     const safeNodes = Array.isArray(nodes) ? nodes : [];
     if (safeNodes.length === 0) return [];
 
+    const hasActiveSearch = Boolean(searchFilter && searchFilter.trim());
+    const isHeatmapActive = enableSearchHeatmap && hasActiveSearch;
+
     return safeNodes.map((n: any) => {
       const isSelected = n.engineState === 'SELECTED';
       const isMatch = n.engineState === 'SEARCH_MATCH';
@@ -337,9 +355,31 @@ function PhysicsGraph({
 
       const color = isSelected ? '#00D2FF' : (n.health === 'critical' ? '#ef4444' : n.health === 'warning' ? '#eab308' : '#22c55e');
       const radius = (isSelected ? (n.isDir ? 3.6 : 2.4) : (n.isDir ? 1.8 : 1.2)) * (nodeSize * 0.6);
-      const opacity = isSelected ? 1.0 : (isUnmatched ? 0.15 : 0.85);
+
+      // Feature 2: Spatial Search Heatmap Beacons
+      // Matching nodes retain full opacity with elevated emissive scale (2.0)
+      // Non-matching nodes drop to opacity: 0.1 and disable billboard text labels
+      let opacity: number;
+      let emissiveInt: number;
+      let showBillboardLabel: boolean;
+
+      if (isHeatmapActive) {
+        if (isMatch || isSelected) {
+          opacity = 1.0;
+          emissiveInt = 2.0;
+          showBillboardLabel = fileLabels;
+        } else {
+          opacity = 0.1;
+          emissiveInt = 0.05;
+          showBillboardLabel = false;
+        }
+      } else {
+        opacity = isSelected ? 1.0 : (isUnmatched ? 0.15 : 0.85);
+        emissiveInt = glowEnabled ? (isSelected ? 1.5 : 0.6) : (isSelected ? 0.4 : 0.1);
+        showBillboardLabel = fileLabels && opacity > 0.2;
+      }
+
       const labelColor = isSelected ? '#00D2FF' : '#E2E8F0';
-      const emissiveInt = glowEnabled ? (isSelected ? 1.5 : 0.6) : (isSelected ? 0.4 : 0.1);
       const dynamicFontSize = `${Math.max(8, Math.round(10 * (fontScale / 100)))}px`;
 
       return (
@@ -350,8 +390,22 @@ function PhysicsGraph({
           onContextMenu={(e) => { e.stopPropagation(); onContextMenu(e, n); }}
         >
           <sphereGeometry args={[radius, 24, 24]} />
-          <meshStandardMaterial color={color} emissive={color} emissiveIntensity={emissiveInt} transparent opacity={opacity} wireframe={isMatch} />
-          {fileLabels && opacity > 0.2 && (
+          <meshStandardMaterial
+            color={color}
+            emissive={color}
+            emissiveIntensity={emissiveInt}
+            transparent
+            opacity={opacity}
+            wireframe={isMatch && !isHeatmapActive}
+          />
+          {/* Feature 1: Git Status Pulse Ambient Outer Ring */}
+          {enableGitPulse && (n.isGitModified || n.git?.status === 'modified' || n.git?.status === 'added') && (
+            <mesh scale={[radius * 1.3, radius * 1.3, radius * 1.3]}>
+              <ringGeometry args={[1, 1.2, 32]} />
+              <meshBasicMaterial color="#F59E0B" side={THREE.DoubleSide} transparent opacity={0.6} />
+            </mesh>
+          )}
+          {showBillboardLabel && (
             <Html position={[0, radius + 1, 0]} center zIndexRange={[100, 0]}>
               <div style={{ color: labelColor, fontSize: dynamicFontSize, fontFamily: 'monospace', textShadow: glowEnabled ? '1px 1px 3px black, -1px -1px 3px black' : 'none', pointerEvents: 'none', whiteSpace: 'nowrap', fontWeight: isSelected ? 'bold' : 'normal' }}>
                 {n.label}
@@ -359,9 +413,9 @@ function PhysicsGraph({
             </Html>
           )}
         </mesh>
-      )
+      );
     });
-  }, [nodes, onSelectNode, onContextMenu, nodeSize, fileLabels, glowEnabled, fontScale]);
+  }, [nodes, onSelectNode, onContextMenu, nodeSize, fileLabels, glowEnabled, fontScale, enableGitPulse, enableSearchHeatmap, searchFilter]);
 
   const memoizedLinks = useMemo(() => {
     const safeLinks = Array.isArray(links) ? links : [];
@@ -482,6 +536,362 @@ function PhysicsEdge({
         blending={THREE.AdditiveBlending}
       />
     </line>
+  );
+}
+
+// ---------------------------------------------------------
+// HUD 2D Radar Mini-Map & Viewport Presets Widget
+// ---------------------------------------------------------
+interface HudRadarMiniMapProps {
+  nodes: GraphNode[];
+  cameraRef?: React.MutableRefObject<any>;
+  controlsRef?: React.MutableRefObject<any>;
+  playCyberTone?: (freq?: number, type?: OscillatorType, duration?: number) => void;
+}
+
+function HudRadarMiniMap({ nodes, cameraRef, controlsRef, playCyberTone }: HudRadarMiniMapProps) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const animFrameRef = useRef<number>(0);
+  const sweepAngleRef = useRef<number>(0);
+
+  useEffect(() => {
+    let active = true;
+
+    const render = () => {
+      if (!active) return;
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          const width = canvas.width;
+          const height = canvas.height;
+          const cx = width / 2;
+          const cy = height / 2;
+
+          // Obsidian HUD background
+          ctx.fillStyle = '#07070E';
+          ctx.fillRect(0, 0, width, height);
+
+          // Concentric radar ranges
+          ctx.strokeStyle = 'rgba(6, 182, 212, 0.18)';
+          ctx.lineWidth = 1;
+          for (let r = 20; r <= 60; r += 20) {
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+
+          // Crosshairs
+          ctx.beginPath();
+          ctx.moveTo(cx, 0); ctx.lineTo(cx, height);
+          ctx.moveTo(0, cy); ctx.lineTo(width, cy);
+          ctx.stroke();
+
+          // Cyber sweeping beam
+          sweepAngleRef.current = (sweepAngleRef.current + 0.035) % (Math.PI * 2);
+          const sweepX = cx + Math.cos(sweepAngleRef.current) * 65;
+          const sweepY = cy + Math.sin(sweepAngleRef.current) * 65;
+          const grad = ctx.createLinearGradient(cx, cy, sweepX, sweepY);
+          grad.addColorStop(0, 'rgba(6, 182, 212, 0.45)');
+          grad.addColorStop(1, 'rgba(6, 182, 212, 0.0)');
+          ctx.strokeStyle = grad;
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.lineTo(sweepX, sweepY);
+          ctx.stroke();
+
+          // 2D Orthographic node position projections
+          const scale = 0.5;
+          nodes.forEach((n: any) => {
+            const nx = cx + (n.x ?? 0) * scale;
+            const ny = cy + (n.z ?? 0) * scale;
+            if (nx >= 2 && nx <= width - 2 && ny >= 2 && ny <= height - 2) {
+              ctx.fillStyle = n.health === 'critical' 
+                ? '#EF4444' 
+                : (n.isGitModified ? '#F59E0B' : (n.health === 'warning' ? '#EAB308' : '#22C55E'));
+              ctx.beginPath();
+              ctx.arc(nx, ny, 1.8, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          });
+
+          // Camera Frustum cone and observer beacon
+          if (cameraRef?.current) {
+            const cam = cameraRef.current;
+            const camX = cx + (cam.position.x ?? 0) * (scale * 0.45);
+            const camY = cy + (cam.position.z ?? 0) * (scale * 0.45);
+            const clampedCamX = Math.max(6, Math.min(width - 6, camX));
+            const clampedCamY = Math.max(6, Math.min(height - 6, camY));
+
+            // Camera dot
+            ctx.fillStyle = '#00D2FF';
+            ctx.beginPath();
+            ctx.arc(clampedCamX, clampedCamY, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Frustum viewing cone
+            const angleToCenter = Math.atan2(cy - clampedCamY, cx - clampedCamX);
+            const coneHalfAngle = 0.5;
+            const coneRadius = 24;
+
+            ctx.fillStyle = 'rgba(6, 182, 212, 0.22)';
+            ctx.beginPath();
+            ctx.moveTo(clampedCamX, clampedCamY);
+            ctx.arc(clampedCamX, clampedCamY, coneRadius, angleToCenter - coneHalfAngle, angleToCenter + coneHalfAngle);
+            ctx.closePath();
+            ctx.fill();
+          }
+        }
+      }
+      animFrameRef.current = requestAnimationFrame(render);
+    };
+
+    animFrameRef.current = requestAnimationFrame(render);
+    return () => {
+      active = false;
+      cancelAnimationFrame(animFrameRef.current);
+    };
+  }, [nodes, cameraRef]);
+
+  // Smooth camera position animator
+  const animateCameraTo = (targetPos: [number, number, number], targetLookAt: [number, number, number]) => {
+    if (playCyberTone) playCyberTone(660, 'sine', 0.05);
+    const cam = cameraRef?.current;
+    const ctrl = controlsRef?.current;
+    if (!cam) return;
+
+    const startPos = [cam.position.x, cam.position.y, cam.position.z];
+    const startTarget = ctrl ? [ctrl.target.x, ctrl.target.y, ctrl.target.z] : [0, 0, 0];
+    const startTime = performance.now();
+    const duration = 400;
+
+    const step = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(1, elapsed / duration);
+      const ease = 1 - Math.pow(1 - progress, 3);
+
+      cam.position.x = startPos[0] + (targetPos[0] - startPos[0]) * ease;
+      cam.position.y = startPos[1] + (targetPos[1] - startPos[1]) * ease;
+      cam.position.z = startPos[2] + (targetPos[2] - startPos[2]) * ease;
+
+      const curTargetX = startTarget[0] + (targetLookAt[0] - startTarget[0]) * ease;
+      const curTargetY = startTarget[1] + (targetLookAt[1] - startTarget[1]) * ease;
+      const curTargetZ = startTarget[2] + (targetLookAt[2] - startTarget[2]) * ease;
+
+      if (ctrl) {
+        ctrl.target.set(curTargetX, curTargetY, curTargetZ);
+        ctrl.update();
+      } else {
+        cam.lookAt(curTargetX, curTargetY, curTargetZ);
+      }
+      cam.updateProjectionMatrix();
+
+      if (progress < 1) {
+        requestAnimationFrame(step);
+      }
+    };
+    requestAnimationFrame(step);
+  };
+
+  return (
+    <div className="fixed bottom-6 left-6 z-40 flex flex-col items-center gap-1.5 p-2 bg-[#07070E]/95 border border-cyan-500/30 rounded-xl shadow-[0_0_25px_rgba(0,0,0,0.85),0_0_12px_rgba(6,182,212,0.15)] backdrop-blur-md font-mono select-none pointer-events-auto">
+      <div className="w-full flex items-center justify-between px-1 text-[9px] font-bold text-cyan-400 tracking-wider">
+        <span>HUD RADAR [2D]</span>
+        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
+      </div>
+
+      <div className="relative rounded-lg overflow-hidden border border-cyan-500/20 shadow-inner">
+        <canvas ref={canvasRef} width={140} height={140} className="block" />
+      </div>
+
+      {/* 3 Quick-Slot Viewport Preset Buttons */}
+      <div className="grid grid-cols-3 gap-1 w-full mt-0.5">
+        <button
+          type="button"
+          onClick={() => animateCameraTo([0, 0, 450], [0, 0, 0])}
+          className="px-1 py-1 text-[8px] font-mono font-bold text-zinc-300 hover:text-cyan-300 bg-[#0B0B16] hover:bg-cyan-950/50 border border-white/10 hover:border-cyan-400 rounded transition-all text-center"
+          title="Viewport Preset 1: Root Front View"
+        >
+          [ 1: ROOT ]
+        </button>
+        <button
+          type="button"
+          onClick={() => animateCameraTo([350, 250, 350], [0, 0, 0])}
+          className="px-1 py-1 text-[8px] font-mono font-bold text-zinc-300 hover:text-cyan-300 bg-[#0B0B16] hover:bg-cyan-950/50 border border-white/10 hover:border-cyan-400 rounded transition-all text-center"
+          title="Viewport Preset 2: Isometric 3D Cluster View"
+        >
+          [ 2: CLUSTERS ]
+        </button>
+        <button
+          type="button"
+          onClick={() => animateCameraTo([0, 600, 1], [0, 0, 0])}
+          className="px-1 py-1 text-[8px] font-mono font-bold text-zinc-300 hover:text-cyan-300 bg-[#0B0B16] hover:bg-cyan-950/50 border border-white/10 hover:border-cyan-400 rounded transition-all text-center"
+          title="Viewport Preset 3: Orthographic Top-Down View"
+        >
+          [ 3: TOP ]
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------
+// Autonomous Security & Dead-Code Scanner Report Modal
+// ---------------------------------------------------------
+interface RepoAuditModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  report: {
+    orphanedNodes: GraphNode[];
+    criticalNodes: GraphNode[];
+    totalScanned: number;
+    timestamp: string;
+  } | null;
+  onDispatchToSparkAi: (prompt: string) => void;
+  onSelectNode: (node: GraphNode) => void;
+  playCyberTone?: (freq?: number, type?: OscillatorType, duration?: number) => void;
+}
+
+function RepoAuditModal({
+  isOpen,
+  onClose,
+  report,
+  onDispatchToSparkAi,
+  onSelectNode,
+  playCyberTone
+}: RepoAuditModalProps) {
+  if (!isOpen || !report) return null;
+
+  const handleSparkDispatch = () => {
+    if (playCyberTone) playCyberTone(900, 'sine', 0.1);
+    const orphanCount = report.orphanedNodes.length;
+    const critCount = report.criticalNodes.length;
+    const orphanList = report.orphanedNodes.slice(0, 8).map(n => `- ${n.label} (${n.path || n.id})`).join('\n');
+    const critList = report.criticalNodes.slice(0, 8).map(n => `- ${n.label}: Health [${n.health}]`).join('\n');
+
+    const prompt = `[AUTONOMOUS CODEBASE AUDIT REPORT - ${report.timestamp}]\n\n`
+      + `Orchestrated repo scan over ${report.totalScanned} vault nodes:\n`
+      + `1. IDENTIFIED ORPHANED / DEAD-CODE CANDIDATES (${orphanCount} files with zero inbound/outbound links):\n${orphanList || 'None detected'}\n\n`
+      + `2. CRITICAL / HIGH-RISK SECURITY NODES (${critCount} critical files):\n${critList || 'None detected'}\n\n`
+      + `Please provide an architectural risk evaluation, recommend safe dead-code pruning steps, and suggest immediate remediation for any critical security issues.`;
+
+    onDispatchToSparkAi(prompt);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 select-none">
+      <div className="relative w-[580px] max-w-[95vw] max-h-[85vh] bg-[#07070E] border border-amber-500/40 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.9),0_0_20px_rgba(245,158,11,0.2)] flex flex-col overflow-hidden font-mono">
+        {/* Header */}
+        <div className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-white/10 bg-[#0A0A14]">
+          <div className="flex items-center gap-3">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.9)] animate-pulse" />
+            <h2 className="text-sm font-bold text-amber-300 tracking-wider">
+              AUTONOMOUS AUDITOR: DEAD-CODE & SECURITY REPORT
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-7 h-7 flex items-center justify-center text-zinc-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Content Body */}
+        <div className="p-6 overflow-y-auto flex flex-col gap-5 flex-1 text-xs">
+          {/* Metrics Pill Grid */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-[#0D0D1A] border border-white/10 rounded-xl p-3 flex flex-col">
+              <span className="text-[10px] text-zinc-400">TOTAL SCANNED</span>
+              <span className="text-lg font-bold text-zinc-100">{report.totalScanned}</span>
+            </div>
+            <div className="bg-[#0D0D1A] border border-amber-500/30 rounded-xl p-3 flex flex-col">
+              <span className="text-[10px] text-amber-400/80">ORPHANED NODES</span>
+              <span className="text-lg font-bold text-amber-300">{report.orphanedNodes.length}</span>
+            </div>
+            <div className="bg-[#0D0D1A] border border-red-500/30 rounded-xl p-3 flex flex-col">
+              <span className="text-[10px] text-red-400/80">CRITICAL RISKS</span>
+              <span className="text-lg font-bold text-red-400">{report.criticalNodes.length}</span>
+            </div>
+          </div>
+
+          {/* Orphaned Dead-Code Section */}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-zinc-200">Orphaned Dead-Code Candidates (Degree = 0)</span>
+              <span className="text-[10px] text-zinc-500">{report.orphanedNodes.length} files found</span>
+            </div>
+            <div className="max-h-36 overflow-y-auto bg-[#0A0A14] border border-white/10 rounded-xl p-2 flex flex-col gap-1.5">
+              {report.orphanedNodes.length === 0 ? (
+                <div className="text-zinc-500 text-[11px] p-2">✓ No orphaned files detected in vault.</div>
+              ) : (
+                report.orphanedNodes.map(n => (
+                  <button
+                    key={n.id}
+                    type="button"
+                    onClick={() => {
+                      onSelectNode(n);
+                      onClose();
+                    }}
+                    className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-zinc-900/60 hover:bg-amber-950/40 border border-white/5 hover:border-amber-500/40 text-left transition-all group"
+                  >
+                    <span className="text-zinc-300 group-hover:text-amber-300 truncate max-w-[340px]">{n.label}</span>
+                    <span className="text-[9px] text-amber-400 font-bold shrink-0">[ISOLATED]</span>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Critical Security Files Section */}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-zinc-200">Critical Health & Security Files</span>
+              <span className="text-[10px] text-zinc-500">{report.criticalNodes.length} files found</span>
+            </div>
+            <div className="max-h-36 overflow-y-auto bg-[#0A0A14] border border-white/10 rounded-xl p-2 flex flex-col gap-1.5">
+              {report.criticalNodes.length === 0 ? (
+                <div className="text-zinc-500 text-[11px] p-2">✓ No critical risk files detected.</div>
+              ) : (
+                report.criticalNodes.map(n => (
+                  <button
+                    key={n.id}
+                    type="button"
+                    onClick={() => {
+                      onSelectNode(n);
+                      onClose();
+                    }}
+                    className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-zinc-900/60 hover:bg-red-950/40 border border-white/5 hover:border-red-500/40 text-left transition-all group"
+                  >
+                    <span className="text-zinc-300 group-hover:text-red-300 truncate max-w-[340px]">{n.label}</span>
+                    <span className="text-[9px] text-red-400 font-bold shrink-0">[CRITICAL]</span>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="shrink-0 flex items-center justify-between px-6 py-4 border-t border-white/10 bg-[#0A0A14] gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-zinc-300 text-xs font-semibold transition-all"
+          >
+            Close
+          </button>
+          <button
+            type="button"
+            onClick={handleSparkDispatch}
+            className="flex-1 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-black font-bold text-xs shadow-[0_0_20px_rgba(245,158,11,0.4)] transition-all flex items-center justify-center gap-2 active:scale-98"
+          >
+            <span>⚡ DISPATCH AUDIT TO SPARK AI</span>
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1128,6 +1538,53 @@ function NeuralGraphDashboardInner() {
   const [isAboutModalOpen, setIsAboutModalOpen] = useState<boolean>(false);
   const [enableGlassBlur, setEnableGlassBlur] = useState<boolean>(false);
 
+  // Feature 1: Git Status & Churn Pulse
+  const [enableGitPulse, setEnableGitPulse] = useState<boolean>(false);
+
+  // Feature 2: Spatial Search Heatmap Beacons
+  const [enableSearchHeatmap, setEnableSearchHeatmap] = useState<boolean>(false);
+
+  // Feature 3: HUD Radar Mini-Map & Presets
+  const [enableRadarMinimap, setEnableRadarMinimap] = useState<boolean>(false);
+
+  // Feature 4: Spark AI Autonomous Security Card
+  const [enableAutonomousAuditor, setEnableAutonomousAuditor] = useState<boolean>(false);
+  const [isAuditModalOpen, setIsAuditModalOpen] = useState<boolean>(false);
+  const [auditReport, setAuditReport] = useState<{
+    orphanedNodes: GraphNode[];
+    criticalNodes: GraphNode[];
+    totalScanned: number;
+    timestamp: string;
+  } | null>(null);
+
+  // Feature 5: Cyber HUD Spatial SFX Audio Engine
+  const [enableCyberSfx, setEnableCyberSfx] = useState<boolean>(false);
+
+  const playCyberTone = useCallback((freq = 440, type: OscillatorType = 'sine', duration = 0.05) => {
+    if (!enableCyberSfx) return;
+    try {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, ctx.currentTime);
+      gain.gain.setValueAtTime(0.04, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + duration);
+    } catch (e) {}
+  }, [enableCyberSfx]);
+
+  useEffect(() => {
+    const handleToggleSound = () => {
+      playCyberTone(220, 'sine', 0.1);
+    };
+    window.addEventListener('cyber:toggle-sound', handleToggleSound);
+    return () => window.removeEventListener('cyber:toggle-sound', handleToggleSound);
+  }, [playCyberTone]);
+
   const handleResetCamera = () => {
     if (controlsRef.current) {
       controlsRef.current.target.set(0, 0, 0);
@@ -1173,6 +1630,11 @@ function NeuralGraphDashboardInner() {
     setShowCodeDependencies(true);
     setHighlightDependencyEdges(true);
     setEnableGlassBlur(false);
+    setEnableGitPulse(false);
+    setEnableSearchHeatmap(false);
+    setEnableRadarMinimap(false);
+    setEnableAutonomousAuditor(false);
+    setEnableCyberSfx(false);
     if (typeof document !== 'undefined') {
       document.documentElement.style.fontSize = '100%';
       document.documentElement.style.setProperty('--app-font-scale', '100%');
@@ -1640,8 +2102,103 @@ function NeuralGraphDashboardInner() {
     return () => window.removeEventListener('ai:trigger-node-select', handleNodeSelect);
   }, [nodes]);
 
+  // Feature 1: Query Git status when enableGitPulse is active
+  useEffect(() => {
+    if (!enableGitPulse) {
+      setNodes(prev => {
+        let changed = false;
+        const updated = prev.map(n => {
+          if (n.isGitModified) {
+            changed = true;
+            return { ...n, isGitModified: false };
+          }
+          return n;
+        });
+        return changed ? updated : prev;
+      });
+      return;
+    }
+
+    let isCancelled = false;
+    const fetchGit = async () => {
+      try {
+        const targetPath = activeWorkspace?.path || 'C:\\Users\\asus\\.gemini\\antigravity\\scratch\\orion-x-studio';
+        const invokeFn = (window as any).electronAPI?.workspace?.gitStatus
+          || ((p: string) => (window as any).electronAPI?.ipcRenderer?.invoke('workspace:gitStatus', p))
+          || ((p: string) => (window as any).electron?.ipcRenderer?.invoke?.('workspace:gitStatus', p))
+          || ((p: string) => (window as any).electron?.invoke?.('workspace:gitStatus', p));
+
+        if (typeof invokeFn === 'function') {
+          const res = await invokeFn(targetPath);
+          if (isCancelled || !res || !res.success || !Array.isArray(res.modifiedFiles)) return;
+
+          const modifiedSet = new Set<string>(
+            res.modifiedFiles.map((f: string) => f.toLowerCase().replace(/\\/g, '/'))
+          );
+
+          setNodes(prev => prev.map(n => {
+            const normPath = (n.path || '').toLowerCase().replace(/\\/g, '/');
+            const normLabel = (n.label || '').toLowerCase();
+            const isMod = modifiedSet.has(normPath)
+              || modifiedSet.has(normLabel)
+              || Array.from(modifiedSet).some(m => normPath.endsWith(m) || m.endsWith(normPath));
+            return { ...n, isGitModified: isMod };
+          }));
+        }
+      } catch (err) {
+        console.warn('Failed to query workspace:gitStatus', err);
+      }
+    };
+
+    fetchGit();
+    return () => { isCancelled = true; };
+  }, [enableGitPulse, activeWorkspace?.path]);
+
+  // Feature 4: Autonomous Dead-Code & Security Scanner
+  const handleRunRepoAudit = useCallback(() => {
+    playCyberTone(750, 'sine', 0.08);
+
+    const inboundCounts = new Map<string, number>();
+    const outboundCounts = new Map<string, number>();
+
+    links.forEach((l: any) => {
+      const sId = typeof l.source === 'object' ? l.source.id : l.source;
+      const tId = typeof l.target === 'object' ? l.target.id : l.target;
+      outboundCounts.set(sId, (outboundCounts.get(sId) || 0) + 1);
+      inboundCounts.set(tId, (inboundCounts.get(tId) || 0) + 1);
+    });
+
+    const fileNodes = nodes.filter(n => !n.isDir && n.type !== 'DIRECTORY' && n.type !== 'folder');
+
+    const orphaned = fileNodes.filter(n => {
+      const inCount = inboundCounts.get(n.id) || 0;
+      const outCount = outboundCounts.get(n.id) || 0;
+      return inCount === 0 && outCount === 0;
+    });
+
+    const critical = nodes.filter(n => {
+      return n.health === 'critical' || (n as any).risk === 'critical' || (n as any).risk === 'high' || (n as any).issues?.length > 0;
+    });
+
+    setAuditReport({
+      orphanedNodes: orphaned,
+      criticalNodes: critical,
+      totalScanned: fileNodes.length || nodes.length,
+      timestamp: new Date().toLocaleTimeString()
+    });
+
+    setIsAuditModalOpen(true);
+  }, [nodes, links, playCyberTone]);
+
+  const handleDispatchAuditToSparkAi = (prompt: string) => {
+    setIsAuditModalOpen(false);
+    setVoiceAiInitialPrompt(prompt);
+    setIsVoiceAiModalOpen(true);
+  };
+
   const handleNodeClick = (node: any, event?: any) => {
     if (!node) return;
+    playCyberTone(880, 'triangle', 0.04);
     console.log("Selected Graph Node Content Target:", node.label);
 
     // Force global context layout synchronization hooks
@@ -1857,6 +2414,18 @@ function NeuralGraphDashboardInner() {
           >
             {!isPhysicsFrozen ? '● MOTION' : '■ FROZEN'}
           </button>
+
+          {enableAutonomousAuditor && (
+            <button
+              type="button"
+              onClick={handleRunRepoAudit}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all text-xs font-mono font-bold text-amber-300 bg-amber-950/40 border border-amber-500/40 hover:bg-amber-900/50 hover:border-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.25)] active:scale-95"
+              title="Run Autonomous Dead-Code & Security Repo Audit"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+              [ RUN REPO AUDIT ]
+            </button>
+          )}
 
           <button
             onClick={() => setIsSearchBarOpen(!isSearchBarOpen)}
@@ -2432,8 +3001,21 @@ function NeuralGraphDashboardInner() {
                     cameraRef={cameraRef}
                     showCodeDependencies={showCodeDependencies}
                     highlightDependencyEdges={highlightDependencyEdges}
+                    enableGitPulse={enableGitPulse}
+                    enableSearchHeatmap={enableSearchHeatmap}
+                    searchFilter={searchFilter}
                   />
                 </Canvas>
+              )}
+
+              {/* Feature 3: HUD 2D Radar Mini-Map */}
+              {enableRadarMinimap && (
+                <HudRadarMiniMap
+                  nodes={visibleGraphData.nodes}
+                  cameraRef={cameraRef}
+                  controlsRef={controlsRef}
+                  playCyberTone={playCyberTone}
+                />
               )}
 
               <div className="absolute top-4 right-4 bg-[#0B0B10] border border-white/5 rounded-lg px-3 py-1.5 font-mono text-[8px] text-gray-500 uppercase tracking-widest pointer-events-none select-none ">
@@ -2864,6 +3446,51 @@ function NeuralGraphDashboardInner() {
                         <CyberToggle checked={highlightDependencyEdges} onChange={setHighlightDependencyEdges} />
                       </div>
 
+                      {/* FEATURE 1: GIT STATUS PULSE */}
+                      <div className="flex items-center justify-between py-2 border-b border-white/10">
+                        <div>
+                          <span className="text-xs font-mono text-zinc-100 font-semibold block">Git Status Pulse</span>
+                          <span className="text-[10px] font-mono text-zinc-400">Pings local Git status and highlights modified/uncommitted nodes</span>
+                        </div>
+                        <CyberToggle checked={enableGitPulse} onChange={setEnableGitPulse} />
+                      </div>
+
+                      {/* FEATURE 2: SEARCH HEATMAP RADAR */}
+                      <div className="flex items-center justify-between py-2 border-b border-white/10">
+                        <div>
+                          <span className="text-xs font-mono text-zinc-100 font-semibold block">Search Heatmap Radar</span>
+                          <span className="text-[10px] font-mono text-zinc-400">Dims non-matching nodes during search and illuminates hits as beacons</span>
+                        </div>
+                        <CyberToggle checked={enableSearchHeatmap} onChange={setEnableSearchHeatmap} />
+                      </div>
+
+                      {/* FEATURE 3: HUD RADAR MINI-MAP */}
+                      <div className="flex items-center justify-between py-2 border-b border-white/10">
+                        <div>
+                          <span className="text-xs font-mono text-zinc-100 font-semibold block">HUD Radar Mini-Map</span>
+                          <span className="text-[10px] font-mono text-zinc-400">Shows an orthographic 2D camera orientation map in the corner</span>
+                        </div>
+                        <CyberToggle checked={enableRadarMinimap} onChange={setEnableRadarMinimap} />
+                      </div>
+
+                      {/* FEATURE 4: AUTONOMOUS SECURITY SCANNER */}
+                      <div className="flex items-center justify-between py-2 border-b border-white/10">
+                        <div>
+                          <span className="text-xs font-mono text-zinc-100 font-semibold block">Autonomous Security Scanner</span>
+                          <span className="text-[10px] font-mono text-zinc-400">Enables one-click dead code & vulnerability auditing via Spark AI</span>
+                        </div>
+                        <CyberToggle checked={enableAutonomousAuditor} onChange={setEnableAutonomousAuditor} />
+                      </div>
+
+                      {/* FEATURE 5: CYBERPUNK SPATIAL SFX */}
+                      <div className="flex items-center justify-between py-2 border-b border-white/10">
+                        <div>
+                          <span className="text-xs font-mono text-zinc-100 font-semibold block">Cyberpunk Spatial SFX</span>
+                          <span className="text-[10px] font-mono text-zinc-400">Plays synthesized Web Audio API clicks and hums during navigation</span>
+                        </div>
+                        <CyberToggle checked={enableCyberSfx} onChange={setEnableCyberSfx} />
+                      </div>
+
                       <div className="flex flex-col gap-1">
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-mono text-zinc-100 font-semibold">Node Size ({nodeSize.toFixed(1)}x)</span>
@@ -3034,6 +3661,21 @@ function NeuralGraphDashboardInner() {
             nodes={nodes}
             edges={links}
             vaultName={activeWorkspace?.name || 'Downloads'}
+          />
+        )}
+
+        {/* Feature 4: Autonomous Auditor Modal */}
+        {enableAutonomousAuditor && isAuditModalOpen && (
+          <RepoAuditModal
+            isOpen={isAuditModalOpen}
+            onClose={() => setIsAuditModalOpen(false)}
+            report={auditReport}
+            onDispatchToSparkAi={handleDispatchAuditToSparkAi}
+            onSelectNode={(node) => {
+              handleNodeClick(node);
+              setActiveFileNode(node);
+            }}
+            playCyberTone={playCyberTone}
           />
         )}
 
