@@ -16,6 +16,8 @@ export function ConsoleDashboardShell() {
     setParticlesEnabled,
     fontScale,
     setFontScale,
+    zoomSensitivity,
+    setZoomSensitivity,
   } = useApp();
 
   const [settingsActiveTab, setSettingsActiveTab] = useState("appearance");
@@ -134,7 +136,7 @@ export function ConsoleDashboardShell() {
                     <div className="flex flex-col gap-1">
                       <span className="text-[10px] font-mono text-zinc-500">UI Density</span>
                       <div className="flex gap-2">
-                         {['Compact', 'Comfortable'].map(t => <button key={t} onClick={()=>setUiDensity(t)} className={`px-2 py-1 text-[10px] font-mono rounded border transition-colors ${uiDensity===t?'bg-cyan-900/30 border-cyan-500 text-white':'bg-zinc-900 border-zinc-800 text-zinc-400'}`}>[ {t} ]</button>)}
+                         {['Compact', 'Standard', 'Spacious'].map(t => <button key={t} onClick={()=>setUiDensity(t)} className={`px-2 py-1 text-[10px] font-mono rounded border transition-colors ${uiDensity.toLowerCase()===t.toLowerCase()?'bg-cyan-900/30 border-cyan-500 text-white':'bg-zinc-900 border-zinc-800 text-zinc-400'}`}>[ {t} ]</button>)}
                       </div>
                     </div>
                     <div className="flex items-center justify-between">
@@ -170,6 +172,24 @@ export function ConsoleDashboardShell() {
                         className="w-full accent-cyan-500" 
                       />
                     </div>
+                    <div className="flex flex-col gap-1.5 col-span-2">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] font-mono text-zinc-400 font-semibold block">Zoom Sensitivity</span>
+                          <span className="text-[9px] font-mono text-zinc-500">Adjust mouse wheel zoom and pinch-to-zoom speed in 3D workspace</span>
+                        </div>
+                        <span className="text-[10px] font-mono text-cyan-400 font-bold">{zoomSensitivity.toFixed(1)}x / {Math.round(zoomSensitivity * 100)}%</span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="0.2" 
+                        max="3.0" 
+                        step="0.1" 
+                        value={zoomSensitivity} 
+                        onChange={(e) => setZoomSensitivity(parseFloat(e.target.value))} 
+                        className="w-full accent-cyan-500" 
+                      />
+                    </div>
                     <div className="col-span-2 pt-3 mt-1 border-t border-[#1E1E26] flex items-center justify-between">
                       <div className="flex flex-col">
                         <span className="text-[11px] font-mono font-bold text-zinc-300">Reset Appearance</span>
@@ -183,6 +203,7 @@ export function ConsoleDashboardShell() {
                           setGlowEnabled(true);
                           setParticlesEnabled(true);
                           setFontScale(100);
+                          setZoomSensitivity(1.0);
                           if (typeof document !== 'undefined') {
                             document.documentElement.style.fontSize = '100%';
                             document.documentElement.style.setProperty('--app-font-scale', '100%');

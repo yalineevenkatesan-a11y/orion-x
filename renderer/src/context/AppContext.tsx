@@ -46,6 +46,10 @@ export interface AppContextType {
   setParticlesEnabled: (val: boolean) => void;
   starGridActive: boolean;
   setStarGridActive: (val: boolean) => void;
+  uiDensity: string;
+  setUiDensity: (density: string) => void;
+  zoomSensitivity: number;
+  setZoomSensitivity: (val: number) => void;
 }
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -60,6 +64,56 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [fontScale, setFontScaleState] = useState<number>(100);
   const [particlesEnabled, setParticlesEnabledState] = useState<boolean>(true);
   const [starGridActive, setStarGridActiveState] = useState<boolean>(true);
+  const [uiDensity, setUiDensityState] = useState<string>('compact');
+  const [zoomSensitivity, setZoomSensitivityState] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('orionx_zoom_sensitivity');
+        if (stored) {
+          const parsed = parseFloat(stored);
+          if (!isNaN(parsed) && parsed >= 0.2 && parsed <= 3.0) return parsed;
+        }
+      } catch (e) {}
+    }
+    return 1.0;
+  });
+
+  const setUiDensity = useCallback((density: string) => {
+    const norm = (density || 'compact').toLowerCase();
+    setUiDensityState(norm);
+    if (typeof document !== 'undefined') {
+      document.documentElement.classList.remove('density-compact', 'density-standard', 'density-spacious');
+      document.body.classList.remove('density-compact', 'density-standard', 'density-spacious');
+      document.documentElement.classList.add(`density-${norm}`);
+      document.body.classList.add(`density-${norm}`);
+      if (norm === 'spacious') {
+        document.documentElement.style.setProperty('--item-padding', '16px 20px');
+        document.documentElement.style.setProperty('--layout-gap', '24px');
+        document.documentElement.style.setProperty('--card-gap', '20px');
+        document.documentElement.style.setProperty('--row-gap', '20px');
+        document.documentElement.style.setProperty('--card-padding', '18px 24px');
+        document.documentElement.style.setProperty('--app-font-scale', '105%');
+        document.documentElement.style.fontSize = '1.05rem';
+      } else if (norm === 'standard') {
+        document.documentElement.style.setProperty('--item-padding', '10px 14px');
+        document.documentElement.style.setProperty('--layout-gap', '16px');
+        document.documentElement.style.setProperty('--card-gap', '14px');
+        document.documentElement.style.setProperty('--row-gap', '16px');
+        document.documentElement.style.setProperty('--card-padding', '14px 18px');
+        document.documentElement.style.setProperty('--app-font-scale', '100%');
+        document.documentElement.style.fontSize = '100%';
+      } else {
+        document.documentElement.style.setProperty('--item-padding', '6px 10px');
+        document.documentElement.style.setProperty('--layout-gap', '8px');
+        document.documentElement.style.setProperty('--card-gap', '8px');
+        document.documentElement.style.setProperty('--row-gap', '8px');
+        document.documentElement.style.setProperty('--card-padding', '8px 12px');
+        document.documentElement.style.setProperty('--app-font-scale', '95%');
+        document.documentElement.style.fontSize = '95%';
+      }
+      try { localStorage.setItem('orionx_ui_density', norm); } catch (e) {}
+    }
+  }, []);
 
   const setGlowEnabled = useCallback((enabled: boolean) => {
     setGlowEnabledState(enabled);
@@ -95,6 +149,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setStarGridActiveState(active);
   }, []);
 
+  const setZoomSensitivity = useCallback((val: number) => {
+    const clamped = Math.max(0.2, Math.min(3.0, parseFloat(val.toFixed(1))));
+    setZoomSensitivityState(clamped);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('orionx_zoom_sensitivity', String(clamped));
+      } catch (e) {}
+    }
+  }, []);
+
   // Core Mappings state
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [activeThreadId, setActiveThreadIdState] = useState<string | null>(null);
@@ -123,6 +187,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     if (typeof document !== 'undefined') {
       document.documentElement.style.setProperty('--app-font-scale', `${fontScale}%`);
+      try {
+        const storedDensity = localStorage.getItem('orionx_ui_density');
+        if (storedDensity) {
+          setUiDensity(storedDensity);
+        }
+      } catch (e) {}
       document.documentElement.style.fontSize = `${fontScale}%`;
       document.documentElement.style.setProperty('--glow-opacity', glowEnabled ? '1' : '0');
       document.documentElement.style.setProperty('--particles-opacity', particlesEnabled ? '1' : '0');
@@ -481,6 +551,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setParticlesEnabled,
         starGridActive,
         setStarGridActive,
+        uiDensity,
+        setUiDensity,
+        zoomSensitivity,
+        setZoomSensitivity,
       }}
     >
       {children}

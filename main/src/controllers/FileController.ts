@@ -87,15 +87,33 @@ export function initializeFileController(): void {
       const fsNode = require('fs');
       const pathNode = require('path');
       try {
-          const ext = pathNode.extname(filePath).toLowerCase();
-          const imageExts = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'];
+          const ext = pathNode.extname(filePath).toLowerCase().replace('.', '');
+          const binaryExtensions = new Set([
+            'pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'ico', 'svg', 'bmp',
+            'exe', 'dll', 'bin', 'zip', 'tar', 'gz', '7z', 'rar',
+            'mp3', 'mp4', 'wav', 'ogg', 'woff', 'woff2', 'ttf',
+            'docx', 'xlsx', 'pptx', 'wasm', 'pyc'
+          ]);
+
+          const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'];
           
           if (imageExts.includes(ext)) {
               const bitmap = fsNode.readFileSync(filePath);
               const base64 = Buffer.from(bitmap).toString('base64');
-              const mimeType = ext === '.svg' ? 'svg+xml' : ext.replace('.', '');
+              const mimeType = ext === 'svg' ? 'svg+xml' : ext;
               return `data:image/${mimeType};base64,${base64}`;
           }
+
+          if (ext === 'pdf') {
+              const fileName = pathNode.basename(filePath);
+              return `// [BINARY FILE: PDF DOCUMENT]\n// File: ${fileName}\n// Direct binary viewing disabled to prevent buffer corruption.`;
+          }
+
+          if (binaryExtensions.has(ext)) {
+              const fileName = pathNode.basename(filePath);
+              return `// [BINARY ASSET: ${ext.toUpperCase()}]\n// File: ${fileName}\n// Direct binary viewing disabled to prevent buffer corruption.`;
+          }
+
           return fsNode.readFileSync(filePath, 'utf-8');
       } catch (e) {
           return "Error reading file stream.";

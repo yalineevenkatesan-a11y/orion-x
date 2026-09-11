@@ -164,8 +164,10 @@ export function WorkspaceHubModal() {
               <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
               <div className="absolute top-2 left-6 w-16 h-2 bg-cyan-400/40 rounded-full" />
               
-              <div className="text-5xl mb-3 filter drop-shadow-[0_0_10px_rgba(34,211,238,0.5)] transform group-hover:scale-110 transition-transform duration-300">
-                📁
+              <div className="mb-3 filter drop-shadow-[0_0_10px_rgba(34,211,238,0.5)] transform group-hover:scale-110 transition-transform duration-300 text-cyan-400">
+                <svg className="w-12 h-12 fill-current" viewBox="0 0 24 24">
+                  <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" />
+                </svg>
               </div>
               <span className="font-mono text-xs font-bold tracking-[0.2em] text-cyan-400 uppercase text-center px-4">
                 Workspace Hub
@@ -199,7 +201,9 @@ export function WorkspaceHubModal() {
                       : 'bg-white/5 border-white/5 hover:border-white/20'
                   }`}
                 >
-                  <span className="text-3xl">📁</span>
+                  <svg className="w-8 h-8 fill-current text-cyan-400 mb-1" viewBox="0 0 24 24">
+                    <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" />
+                  </svg>
                   <span className="font-mono text-xs font-bold tracking-wider text-white">Upload Project</span>
                   <span className="text-[9px] font-mono text-gray-500 text-center uppercase">Open local directory folder</span>
                 </div>

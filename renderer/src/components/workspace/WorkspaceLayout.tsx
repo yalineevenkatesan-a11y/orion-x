@@ -10,6 +10,8 @@ const NeuralGraphDashboardNoSSR = dynamic(
 );
 import { ProjectSidebar } from '../sidebar/ProjectSidebar';
 import { AiManagementPanel } from './AiManagementPanel';
+import { getFileType } from '@/utils/fileTypes';
+import { BinaryFilePreview } from './BinaryFilePreview';
 
 import { useWorkspaceUi } from '../../context/WorkspaceUiContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -498,7 +500,7 @@ const FileTreeNode = ({
 };
 export function WorkspaceLayout() {
   const [bootState, setBootState] = useState<'initializing' | 'active'>('initializing');
-  const { activeWorkspace } = useWorkspaceUi();
+  const { activeWorkspace, setActiveWorkspace, setWorkspaceState } = useWorkspaceUi();
   const [selectedNode, setSelectedNode] = useState<any>(null);
   const [isCodeModalOpen, setCodeModalOpen] = useState(false);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
@@ -528,6 +530,48 @@ export function WorkspaceLayout() {
   const [showOptions, setShowOptions] = useState(false);
   const [activeView, setActiveView] = useState<string | null>(null);
   const [activeFile, setActiveFile] = useState<{name: string, content: string, path: string, nodeData?: any} | null>(null);
+
+  const handleSwitchVault = async () => {
+    try {
+      const targetApi = (window as any).electronAPI || (window as any).electron || (window as any).api;
+      if (targetApi?.workspace?.openDialog) {
+        const selectedPath = await targetApi.workspace.openDialog();
+        if (selectedPath) {
+          const basename = selectedPath.split(/[\\/]/).pop() || 'Untitled Project';
+          let registered: any = null;
+          if (targetApi.workspace.registerTarget) {
+            try {
+              registered = await targetApi.workspace.registerTarget({
+                name: basename,
+                path: selectedPath
+              });
+            } catch (regErr) {
+              console.warn('Workspace registration fallback:', regErr);
+            }
+          }
+          const ws = registered || {
+            id: `ws_${Date.now()}`,
+            name: basename,
+            path: selectedPath,
+            createdAt: Date.now()
+          };
+          setActiveWorkspace(ws);
+          try {
+            const stored = localStorage.getItem('orionx_recent_vaults');
+            const list = stored ? JSON.parse(stored) : [];
+            const next = [ws, ...list.filter((v: any) => v.path !== selectedPath)].slice(0, 10);
+            localStorage.setItem('orionx_recent_vaults', JSON.stringify(next));
+          } catch (e) {}
+          window.dispatchEvent(new CustomEvent('orion:open-workspace', { detail: selectedPath }));
+        }
+      } else {
+        setWorkspaceState('HUB');
+      }
+    } catch (err) {
+      console.error('Failed to open vault selector dialog:', err);
+      setWorkspaceState('HUB');
+    }
+  };
   const [basicInfoOpen, setBasicInfoOpen] = useState(true);
   const [codeInfoOpen, setCodeInfoOpen] = useState(true);
   const [depsOpen, setDepsOpen] = useState(true);
@@ -702,7 +746,12 @@ export function WorkspaceLayout() {
                 OPTIONS
               </button>
             </div>
-            <button className="px-4 py-2 bg-[#0B0B10] border border-[#1E1E26] outline-none focus:outline-none text-xs font-bold text-[#E2E8F0] uppercase tracking-widest hover:border-[#00D2FF]">SWITCH VAULT</button>
+            <button 
+              onClick={handleSwitchVault}
+              className="px-4 py-2 bg-[#0B0B10] border border-[#1E1E26] outline-none focus:outline-none text-xs font-bold text-[#E2E8F0] uppercase tracking-widest hover:border-[#00D2FF]"
+            >
+              SWITCH VAULT
+            </button>
             <button onClick={() => window.dispatchEvent(new CustomEvent('orion:reset-zoom'))} className="px-4 py-2 bg-[#0B0B10] border border-[#1E1E26] outline-none focus:outline-none text-xs font-bold text-[#E2E8F0] uppercase tracking-widest hover:border-[#00D2FF]">&lt; BACK</button>
           </div>
 
@@ -731,16 +780,22 @@ export function WorkspaceLayout() {
                     Global Search
                 </div>
                 <div 
-                    onClick={() => { setActiveView('memory'); setShowOptions(false); }}
-                    className={`px-4 py-3 cursor-pointer ${activeView === 'memory' ? 'bg-[#2A2A35] text-white' : 'text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26]'}`}
+                    onClick={() => {
+                        window.dispatchEvent(new CustomEvent('orion:run-repo-audit'));
+                        setShowOptions(false);
+                    }}
+                    className="px-4 py-3 cursor-pointer text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26]"
                 >
-                    Memory Context Tracker
+                    Run Repo Audit
                 </div>
                 <div 
-                    onClick={() => { setActiveView('chat'); setShowOptions(false); }}
-                    className={`px-4 py-3 cursor-pointer ${activeView === 'chat' ? 'bg-[#2A2A35] text-white' : 'text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26]'}`}
+                    onClick={() => {
+                        window.dispatchEvent(new CustomEvent('orion:export-hud'));
+                        setShowOptions(false);
+                    }}
+                    className="px-4 py-3 cursor-pointer text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26]"
                 >
-                    Multi-Agent Chat Console
+                    Export HUD
                 </div>
                 <div 
                     onClick={() => {
@@ -1435,9 +1490,30 @@ export function WorkspaceLayout() {
                 [CLOSE STREAM]
               </button>
             </div>
-            <pre className="flex-1 overflow-auto bg-[#0B0B10] border border-white/10 p-6 font-mono text-[12px] text-gray-300 shadow-2xl rounded-sm selection:bg-cyan-900 selection:text-white">
-              <code>{selectedNode.fileContent || '// No source data available'}</code>
-            </pre>
+            {(() => {
+              const fileType = getFileType(selectedNode.path || selectedNode.label || '');
+              const content = selectedNode.fileContent || '';
+              const isBinaryOrPdf = fileType === 'pdf' || fileType === 'binary' || fileType === 'image' ||
+                content.startsWith('// [BINARY FILE:') || content.startsWith('// [BINARY ASSET:') || content.startsWith('data:image');
+              if (isBinaryOrPdf) {
+                return (
+                  <div className="flex-1 overflow-auto bg-[#0B0B10] border border-white/10 p-4">
+                    <BinaryFilePreview
+                      filePath={selectedNode.path}
+                      fileName={selectedNode.label}
+                      fileSize={selectedNode.size}
+                      fileType={fileType}
+                      content={content}
+                    />
+                  </div>
+                );
+              }
+              return (
+                <pre className="flex-1 overflow-auto bg-[#0B0B10] border border-white/10 p-6 font-mono text-[12px] text-gray-300 shadow-2xl rounded-sm selection:bg-cyan-900 selection:text-white">
+                  <code>{selectedNode.fileContent || '// No source data available'}</code>
+                </pre>
+              );
+            })()}
           </motion.div>
         )}
       </AnimatePresence>

@@ -56,6 +56,86 @@ export function SparkAiVoiceModal({
   // Model selection state
   type ModelOption = 'auto' | 'llava' | 'qwen2.5-coder:7b';
   const [selectedModel, setSelectedModel] = useState<ModelOption>('auto');
+  const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const getModelDisplayLabel = (model: ModelOption) => {
+    switch (model) {
+      case 'llava':
+        return 'LLaVA ▾';
+      case 'qwen2.5-coder:7b':
+        return 'Qwen ▾';
+      case 'auto':
+      default:
+        return 'AUTO ▾';
+    }
+  };
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsModelDropdownOpen(false);
+      }
+    };
+    if (isModelDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isModelDropdownOpen]);
+
+  // Handle file/image attachment from + button
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const filePath = (file as any).path || file.name;
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    const isImg = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'svg'].includes(ext);
+
+    if (isImg) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        setAttachedNode({
+          name: file.name,
+          id: file.name,
+          path: filePath,
+          size: file.size,
+          isImage: true,
+          base64Data: result.includes(',') ? result.split(',')[1] : result
+        });
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setAttachedNode({
+        name: file.name,
+        id: file.name,
+        path: filePath,
+        size: file.size,
+        isImage: false
+      });
+    }
+    e.target.value = '';
+  };
+
+  // Auto-expanding textarea input handler
+  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInputText(e.target.value);
+    const target = e.target;
+    target.style.height = 'auto'; // Reset to calculate true scrollHeight
+    target.style.height = `${Math.min(target.scrollHeight, 180)}px`;
+  };
+
+  // Submit on Enter, Shift+Enter for newline
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleFormSubmit(e as any);
+    }
+  };
 
   // Attached selected node context
   const [attachedNode, setAttachedNode] = useState<any>(activeNode || null);
@@ -214,6 +294,9 @@ export function SparkAiVoiceModal({
 
     const userMessageText = promptTextContent.trim();
     setInputText('');
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
 
     const userMsg: ChatMessage = {
       id: `user-${Date.now()}`,
@@ -375,8 +458,10 @@ ${activeFileList.join(', ')}
     }
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleFormSubmit = (e?: React.FormEvent) => {
+    if (e && typeof e.preventDefault === 'function') {
+      e.preventDefault();
+    }
     if (inputText.trim()) {
       sendMessage(inputText);
     }
@@ -469,7 +554,7 @@ ${activeFileList.join(', ')}
   return (
     <div
       style={{ left: `${pos.x}px`, top: `${pos.y}px` }}
-      className="fixed w-[350px] h-[540px] max-h-[calc(100vh-120px)] z-50 rounded-[28px] border border-purple-500/30 bg-[#0B0B14]/95 backdrop-blur-2xl shadow-2xl flex flex-col overflow-hidden select-none"
+      className="fixed w-[370px] h-[560px] max-h-[calc(100vh-100px)] z-50 rounded-[28px] border border-purple-500/30 bg-[#0B0B14]/95 backdrop-blur-2xl shadow-2xl flex flex-col overflow-hidden select-none"
     >
       {/* 1. TOP HEADER DRAG BAR */}
       <div
@@ -486,6 +571,14 @@ ${activeFileList.join(', ')}
           </div>
         </div>
         <div className="flex items-center gap-1.5" data-no-drag>
+          <button
+            type="button"
+            onClick={() => setIsMuted(!isMuted)}
+            className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/15 text-zinc-300 flex items-center justify-center text-xs cursor-pointer transition-colors"
+            title={isMuted ? "Unmute Voice Audio" : "Mute Voice Audio"}
+          >
+            {isMuted ? '🔇' : '🔊'}
+          </button>
           <button
             type="button"
             onClick={() => setIsMinimized(true)}
@@ -638,66 +731,152 @@ ${activeFileList.join(', ')}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* 4. CLEAN BOTTOM INPUT BAR (With Model Selector Pill Beside Mic & Send) */}
+      {/* 4. MODERN UNIFIED AI INPUT CARD (ChatGPT / Gemini Stacked Multi-Row Style) */}
       <div className="shrink-0 p-3 bg-[#0B0B14] border-t border-white/10" data-no-drag>
-        <form onSubmit={handleFormSubmit} className="flex items-center gap-2">
-          {/* Sound Mute/Unmute */}
-          <button
-            type="button"
-            onClick={() => setIsMuted(!isMuted)}
-            className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-zinc-400 hover:text-white shrink-0 cursor-pointer text-xs"
-            title={isMuted ? "Unmute Audio" : "Mute Audio"}
-          >
-            {isMuted ? '🔇' : '🔊'}
-          </button>
-
-          {/* Text Input */}
+        <div className="relative bg-[#1e1f24] border border-white/[0.08] rounded-[18px] p-3 flex flex-col gap-2 transition-all duration-200 focus-within:border-cyan-500/40 focus-within:shadow-[0_0_15px_rgba(6,182,212,0.15)] shadow-xl">
+          {/* Hidden File Input for Attachment Button */}
           <input
-            type="text"
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            placeholder={attachedNode ? `Ask about ${attachedNode.name || 'attached file'}...` : "Ask Spark AI about your codebase..."}
-            disabled={isGenerating}
-            className="flex-1 min-w-0 bg-[#141422] border border-white/10 rounded-full px-3.5 py-1.5 text-xs text-white placeholder:text-zinc-500 focus:outline-none focus:border-purple-500/50"
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            className="hidden"
           />
 
-          {/* Model Selector Dropdown Pill (Beside Mic & Send) */}
-          <div className="shrink-0 flex items-center bg-[#18182A] border border-purple-500/30 rounded-full px-2 py-1 shadow-sm">
-            <select
-              value={selectedModel}
-              onChange={(e) => setSelectedModel(e.target.value as 'auto' | 'llava' | 'qwen2.5-coder:7b')}
-              className="bg-transparent text-[10px] font-mono font-semibold text-purple-300 focus:outline-none cursor-pointer pr-1"
-            >
-              <option value="auto" className="bg-[#12121E] text-white">AUTO</option>
-              <option value="llava" className="bg-[#12121E] text-white">LLaVA (Vision)</option>
-              <option value="qwen2.5-coder:7b" className="bg-[#12121E] text-white">Qwen (Code)</option>
-            </select>
+          {/* Top Area: Full-Width Auto-Expanding Textarea */}
+          <textarea
+            ref={textareaRef}
+            value={inputText}
+            onChange={handleInput}
+            onKeyDown={handleKeyDown}
+            placeholder={attachedNode ? `Ask about ${attachedNode.name || 'attached file'}...` : "Ask anything here..."}
+            disabled={isGenerating}
+            rows={1}
+            className="w-full bg-transparent text-white placeholder-zinc-500 text-xs leading-relaxed resize-none outline-none border-none p-0 overflow-y-auto min-h-[26px] max-h-[180px] select-text custom-scrollbar font-sans"
+            style={{ height: 'auto' }}
+          />
+
+          {/* Bottom Action Row */}
+          <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-white/[0.05]">
+            {/* Left Side Controls */}
+            <div className="flex items-center gap-1.5 relative">
+              {/* Attachment Button (+) */}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-6 h-6 rounded-lg bg-white/5 hover:bg-white/15 border border-white/10 text-zinc-400 hover:text-white flex items-center justify-center text-sm font-semibold transition-colors cursor-pointer"
+                title="Attach file or image"
+              >
+                +
+              </button>
+
+              {/* Compact Model Selector Dropdown Pill */}
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
+                  className="px-2.5 py-1 rounded-lg bg-[#14151c] hover:bg-[#1a1b24] border border-white/10 text-[11px] font-mono font-medium text-purple-200 hover:text-white flex items-center gap-1 transition-colors cursor-pointer shadow-sm"
+                  title="Select AI Model (LLaVA / Qwen / Auto)"
+                >
+                  <span>{getModelDisplayLabel(selectedModel)}</span>
+                </button>
+
+                {/* Dropdown Menu (Opens Upwards) */}
+                {isModelDropdownOpen && (
+                  <div className="absolute bottom-full mb-2 left-0 z-50 bg-[#14151f] border border-purple-500/40 rounded-xl p-1 shadow-2xl shadow-black/80 flex flex-col min-w-[145px] backdrop-blur-md">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedModel('auto');
+                        setIsModelDropdownOpen(false);
+                      }}
+                      className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-mono transition-colors flex flex-col cursor-pointer ${
+                        selectedModel === 'auto'
+                          ? 'bg-purple-600/30 text-purple-300 font-semibold'
+                          : 'text-zinc-300 hover:bg-white/5 hover:text-white'
+                      }`}
+                    >
+                      <span className="font-semibold">Auto</span>
+                      <span className="text-[9px] text-zinc-500 font-normal">Smart Multi-Route</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedModel('llava');
+                        setIsModelDropdownOpen(false);
+                      }}
+                      className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-mono transition-colors flex flex-col cursor-pointer ${
+                        selectedModel === 'llava'
+                          ? 'bg-purple-600/30 text-purple-300 font-semibold'
+                          : 'text-zinc-300 hover:bg-white/5 hover:text-white'
+                      }`}
+                    >
+                      <span className="font-semibold">LLaVA</span>
+                      <span className="text-[9px] text-zinc-500 font-normal">Multimodal Vision</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedModel('qwen2.5-coder:7b');
+                        setIsModelDropdownOpen(false);
+                      }}
+                      className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-mono transition-colors flex flex-col cursor-pointer ${
+                        selectedModel === 'qwen2.5-coder:7b'
+                          ? 'bg-purple-600/30 text-purple-300 font-semibold'
+                          : 'text-zinc-300 hover:bg-white/5 hover:text-white'
+                      }`}
+                    >
+                      <span className="font-semibold">Qwen</span>
+                      <span className="text-[9px] text-zinc-500 font-normal">Code & Reasoning</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Right Side Controls */}
+            <div className="flex items-center gap-1.5">
+              {/* Voice Input Waveform / Microphone Icon Button */}
+              <button
+                type="button"
+                onClick={toggleMic}
+                className={`h-7 px-2 rounded-lg border transition-all flex items-center gap-1 text-xs cursor-pointer ${
+                  isListening
+                    ? 'bg-pink-600/30 border-pink-500 text-pink-300 animate-pulse'
+                    : 'bg-white/5 border-white/10 text-zinc-400 hover:text-purple-400 hover:bg-white/10'
+                }`}
+                title={isListening ? "Listening... (Click to stop)" : "Voice Input"}
+              >
+                {isListening ? (
+                  <div className="flex items-center gap-0.5">
+                    <span className="w-1 h-2.5 bg-pink-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                    <span className="w-1 h-3.5 bg-pink-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                    <span className="w-1 h-2 bg-pink-400 rounded-full animate-bounce" />
+                  </div>
+                ) : (
+                  <span className="text-xs">🎤</span>
+                )}
+              </button>
+
+              {/* Clean Send Button (Active/Highlighted when input has text) */}
+              <button
+                type="button"
+                onClick={() => handleFormSubmit()}
+                disabled={!inputText.trim() || isGenerating}
+                className={`h-7 px-2.5 rounded-lg flex items-center justify-center gap-1 text-xs font-semibold transition-all duration-200 cursor-pointer ${
+                  inputText.trim() && !isGenerating
+                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-[0_0_12px_rgba(236,72,153,0.35)] hover:scale-105 active:scale-95'
+                    : 'bg-white/5 text-zinc-600 border border-white/5 cursor-not-allowed opacity-40'
+                }`}
+                title="Send (Enter)"
+              >
+                <span>Send</span>
+                <span className="text-[10px]">➤</span>
+              </button>
+            </div>
           </div>
-
-          {/* Mic Button */}
-          <button
-            type="button"
-            onClick={toggleMic}
-            className={`w-8 h-8 rounded-full border transition-colors flex items-center justify-center text-xs shrink-0 cursor-pointer ${
-              isListening
-                ? 'bg-pink-600/30 border-pink-500 text-pink-300 animate-pulse'
-                : 'bg-white/5 border-white/10 text-zinc-400 hover:text-purple-400'
-            }`}
-            title="Voice Input"
-          >
-            🎤
-          </button>
-
-          {/* Send Button */}
-          <button
-            type="submit"
-            disabled={!inputText.trim() || isGenerating}
-            className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-600 to-pink-500 flex items-center justify-center text-white disabled:opacity-40 disabled:cursor-not-allowed shrink-0 cursor-pointer text-xs"
-            title="Send"
-          >
-            ➤
-          </button>
-        </form>
+        </div>
       </div>
     </div>
   );

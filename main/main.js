@@ -33,25 +33,73 @@ ipcMain.handle('workspace:readFile', async (_event, filePath) => {
       };
     }
 
-    const ext = path.extname(target).slice(1).toLowerCase();
-    const imageExtensions = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'svg'];
+    const BINARY_EXTENSIONS = new Set([
+      'pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'ico', 'svg',
+      'exe', 'dll', 'bin', 'zip', 'tar', 'gz', '7z',
+      'mp3', 'mp4', 'wav', 'ogg', 'woff', 'woff2', 'ttf'
+    ]);
 
-    if (imageExtensions.includes(ext)) {
+    function getFileType(filePath) {
+      const ext = (filePath.split('.').pop() || '').toLowerCase();
+      if (ext === 'pdf') return 'pdf';
+      if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'ico', 'svg'].includes(ext)) return 'image';
+      if (BINARY_EXTENSIONS.has(ext)) return 'binary';
+      return 'text';
+    }
+
+    const fileType = getFileType(target);
+    const fileName = path.basename(target);
+    const ext = (target.split('.').pop() || '').toLowerCase();
+
+    if (fileType === 'image') {
       const buffer = fs.readFileSync(target);
       return {
         success: true,
+        fileType: 'image',
         isImage: true,
         isDirectory: false,
+        fileName,
+        fileSize: stat.size,
         base64: buffer.toString('base64'),
-        mimeType: `image/${ext === 'svg' ? 'svg+xml' : ext}`
+        mimeType: `image/${ext === 'svg' ? 'svg+xml' : ext}`,
+        content: `// [IMAGE FILE: ${ext.toUpperCase()}]\n// File: ${fileName}\n// Size: ${(stat.size / 1024).toFixed(1)} KB`
+      };
+    }
+
+    if (fileType === 'pdf') {
+      return {
+        success: true,
+        fileType: 'pdf',
+        isPdf: true,
+        isBinary: true,
+        isDirectory: false,
+        fileName,
+        fileSize: stat.size,
+        content: `// [BINARY FILE: PDF DOCUMENT]\n// File: ${fileName}\n// Size: ${(stat.size / 1024).toFixed(1)} KB\n// Direct binary viewing disabled to prevent buffer corruption.`
+      };
+    }
+
+    if (fileType === 'binary') {
+      return {
+        success: true,
+        fileType: 'binary',
+        isBinary: true,
+        isDirectory: false,
+        fileName,
+        extension: ext,
+        fileSize: stat.size,
+        content: `// [BINARY ASSET: ${ext.toUpperCase() || 'COMPILED'}]\n// File: ${fileName}\n// Size: ${(stat.size / 1024).toFixed(1)} KB\n// Direct binary viewing disabled to prevent buffer corruption.`
       };
     }
 
     const textContent = fs.readFileSync(target, 'utf-8');
     return {
       success: true,
+      fileType: 'text',
       isImage: false,
       isDirectory: false,
+      fileName,
+      fileSize: stat.size,
       content: textContent
     };
   } catch (err) {
@@ -60,6 +108,19 @@ ipcMain.handle('workspace:readFile', async (_event, filePath) => {
       error: err?.message || 'Failed to read path'
     };
   }
+});
+
+ipcMain.removeHandler('workspace:openPath');
+ipcMain.handle('workspace:openPath', async (_event, filePath) => {
+  try {
+    const { shell } = require('electron');
+    if (filePath && shell) {
+      return await shell.openPath(filePath);
+    }
+  } catch (e) {
+    console.warn('Failed to open path:', e);
+  }
+  return false;
 });
 
 let mainWindow;

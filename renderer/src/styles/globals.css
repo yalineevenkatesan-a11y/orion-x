@@ -6,6 +6,40 @@
   --app-font-scale: 100%;
   --glow-opacity: 1;
   --particles-opacity: 1;
+  --item-padding: 8px 12px;
+  --layout-gap: 12px;
+  --card-gap: 12px;
+  --row-gap: 12px;
+  --card-padding: 12px 16px;
+}
+
+/* Ensure spacious overrides standard container gap and padding */
+.density-spacious {
+  --item-padding: 16px 20px !important;
+  --layout-gap: 24px !important;
+  --card-gap: 20px !important;
+  --row-gap: 20px !important;
+  --card-padding: 18px 24px !important;
+  --app-font-scale: 105% !important;
+  font-size: 1.05rem !important;
+}
+
+.density-standard {
+  --item-padding: 10px 14px !important;
+  --layout-gap: 16px !important;
+  --card-gap: 14px !important;
+  --row-gap: 16px !important;
+  --card-padding: 14px 18px !important;
+  --app-font-scale: 100% !important;
+}
+
+.density-compact {
+  --item-padding: 6px 10px !important;
+  --layout-gap: 8px !important;
+  --card-gap: 8px !important;
+  --row-gap: 8px !important;
+  --card-padding: 8px 12px !important;
+  --app-font-scale: 95% !important;
 }
 
 @layer base {
@@ -158,3 +192,60 @@ body.no-glow-animations,
   animation-duration: 0.001ms !important;
   animation-iteration-count: 1 !important;
 }
+
+/* ========================================================================= */
+/* SETTINGS MATRIX MODAL POSITIONING & OVERFLOW LAYOUT                      */
+/* ========================================================================= */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 72px;    /* Leaves clear space below the top sub-bar */
+  padding-bottom: 32px; /* Prevents touching the bottom status bar */
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 680px;
+  height: min(78vh, 640px); /* Strictly locks the modal height */
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 229, 255, 0.25);
+  background: #090d14;
+  overflow: hidden; /* Header and tabs stay fixed */
+}
+
+.modal-header, .modal-tabs {
+  flex-shrink: 0;
+}
+
+.modal-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 16px 20px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 229, 255, 0.3) rgba(0, 0, 0, 0.2);
+}
+
+/* Clean custom scrollbar */
+.modal-body::-webkit-scrollbar {
+  width: 5px;
+}
+.modal-body::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+.modal-body::-webkit-scrollbar-thumb {
+  background: rgba(0, 229, 255, 0.3);
+  border-radius: 3px;
+}
+.modal-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 229, 255, 0.6);
+}
+

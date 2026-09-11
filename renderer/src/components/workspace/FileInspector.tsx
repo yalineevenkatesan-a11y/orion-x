@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useWorkspaceUi } from '@/context/WorkspaceUiContext';
 import { DatasetExplorer, isDatasetFile } from './DatasetExplorer';
+import { getFileType } from '@/utils/fileTypes';
+import { BinaryFilePreview } from './BinaryFilePreview';
 
 export function FileInspector({ 
   enableLiveEditor = false,
@@ -132,6 +134,9 @@ export function FileInspector({
   };
 
   const displayContent = content || selectedNode.fileContent || '';
+  const fileType = getFileType(selectedNode?.path || fileName);
+  const isBinaryOrPdf = fileType === 'pdf' || fileType === 'binary' || fileType === 'image' ||
+    displayContent.startsWith('// [BINARY FILE:') || displayContent.startsWith('// [BINARY ASSET:') || displayContent.startsWith('data:image');
 
   const handleSave = async () => {
     if (!selectedNode?.path) return;
@@ -268,6 +273,16 @@ export function FileInspector({
             content={displayContent}
             fileName={fileName}
           />
+        ) : isBinaryOrPdf ? (
+          <div className="flex-1 flex flex-col bg-white/5 border border-white/10 rounded-xl overflow-hidden min-h-[220px]">
+            <BinaryFilePreview
+              filePath={selectedNode?.path}
+              fileName={fileName}
+              fileSize={selectedNode?.size}
+              fileType={fileType}
+              content={displayContent}
+            />
+          </div>
         ) : displayContent ? (
           <div className="flex-1 flex flex-col bg-white/5 border border-white/10 rounded-xl overflow-hidden min-h-[150px]">
             <div className="bg-black/40 px-3 py-1.5 border-b border-white/10 select-none flex items-center justify-between">

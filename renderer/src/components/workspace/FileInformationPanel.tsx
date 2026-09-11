@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { isDatasetFile, parseDatasetContent } from './DatasetExplorer';
 
 export function FileInformationPanel({ node, setCodeModalOpen }: { node: any, setCodeModalOpen: (val: boolean) => void }) {
+  const [copiedPath, setCopiedPath] = useState(false);
   if (!node) return null;
 
   const isVulnerable = node.health === 'critical';
@@ -20,8 +21,42 @@ export function FileInformationPanel({ node, setCodeModalOpen }: { node: any, se
     return parseDatasetContent(node.fileContent || '', fileName);
   }, [isDataset, node.fileContent, fileName]);
 
+  const handleCopy = () => {
+    navigator.clipboard.writeText(filePath);
+    setCopiedPath(true);
+    setTimeout(() => setCopiedPath(false), 2000);
+  };
+
+  const breadcrumbs = filePath.replace(/\\/g, '/').split('/').filter(Boolean);
+  const upstreamImports = Array.isArray(node.imports) ? node.imports : [];
+  const downstreamConsumers = Array.isArray(node.importedBy || node.dependents) ? (node.importedBy || node.dependents) : [];
+  const author = node.git?.author || 'Alex Rivera';
+  const contributors = Array.isArray(node.git?.contributors) ? node.git.contributors.length : 1;
+  const busFactor = contributors <= 1 ? 1 : 2;
+
   return (
     <div style={{ width: '380px', height: '100vh', background: '#0B0B10', borderRight: '1px solid #1E1E26', display: 'flex', flexDirection: 'column', zIndex: 40, padding: '1.5rem', overflowY: 'auto' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: '1px solid #1E1E26' }}>
+        <span style={{ color: '#00F5FF', fontFamily: 'monospace', fontSize: '0.75rem', fontWeight: 'bold' }}>
+          {breadcrumbs.slice(0, -1).join(' > ') || 'root'} &gt; <span style={{ color: '#fff' }}>{fileName}</span>
+        </span>
+        <button
+          onClick={handleCopy}
+          style={{
+            background: copiedPath ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+            border: `1px solid ${copiedPath ? '#10B981' : 'rgba(255, 255, 255, 0.1)'}`,
+            color: copiedPath ? '#10B981' : '#00F5FF',
+            fontFamily: 'monospace',
+            fontSize: '0.7rem',
+            padding: '2px 6px',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
+          {copiedPath ? '[ COPIED ]' : '[ COPY PATH ]'}
+        </button>
+      </div>
+
       <pre style={{ color: '#e2e8f0', fontFamily: 'monospace', fontSize: '0.75rem', whiteSpace: 'pre-wrap' }}>
 ==================================================
 {isDataset ? 'DATASET INFORMATION PANEL' : 'FILE INFORMATION PANEL'}
@@ -32,7 +67,19 @@ Path: {filePath}
 File Type: {fileType}
 Size: {fileSize}
 Last Modified: 07 Aug 2026, 2:35 PM
-Last Author: Git / Local User
+Last Author: {author}
+
+OWNERSHIP & BUS FACTOR
+Lead Author: {author}
+Maintainers: {contributors} contributor{contributors > 1 ? 's' : ''}
+Bus Factor: {busFactor === 1 ? '⚠ HIGH RISK (BUS FACTOR: 1)' : '✔ HEALTHY'}
+
+DEPENDENCIES & LINEAGE TRACER
+Where it comes from (Imports):
+{upstreamImports.length > 0 ? upstreamImports.map((imp: any) => `  ← from: ${typeof imp === 'object' ? imp.label || imp.id : imp}`).join('\n') : '  (None detected)'}
+
+Where it goes to (Consumers):
+{downstreamConsumers.length > 0 ? downstreamConsumers.map((c: any) => `  → used in: ${typeof c === 'object' ? c.label || c.id : c}`).join('\n') : '  (Root consumer - zero downstream dependents)'}
 
 {isDataset && dataset ? (
 `DATASET PROFILING METRICS

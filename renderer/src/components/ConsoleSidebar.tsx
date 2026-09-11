@@ -6,8 +6,16 @@ import { useConsoleUi, ConsoleTab } from '@/context/ConsoleUiContext';
 export function ConsoleSidebar() {
   const { activeConsoleTab, setActiveConsoleTab } = useConsoleUi();
 
-  const navItems: { tab: ConsoleTab; icon: string; label: string }[] = [
-    { tab: 'FILES', icon: '📁', label: 'Files' },
+  const navItems: { tab: ConsoleTab; icon: React.ReactNode; label: string }[] = [
+    { 
+      tab: 'FILES', 
+      icon: (
+        <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+          <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" />
+        </svg>
+      ), 
+      label: 'Files' 
+    },
     { tab: 'SEARCH', icon: '🔍', label: 'Search' },
     { tab: 'MEMORY', icon: '🧠', label: 'Memory' },
     { tab: 'HISTORY', icon: '💬', label: 'Chat' },
