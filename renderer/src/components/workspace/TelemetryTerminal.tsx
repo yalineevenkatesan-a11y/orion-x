@@ -226,11 +226,11 @@ export const TelemetryTerminal: React.FC<TelemetryTerminalProps> = ({ wsUrl = DE
     <>
       {/* 1. SLEEK COMPACT STATUS BAR TRIGGER BUTTON (Fixed at bottom-right corner) */}
       {!isExpanded && (
-        <div className="fixed bottom-3 right-6 z-40 pointer-events-auto">
+        <div className="fixed bottom-3 right-6 z-[155] pointer-events-auto">
           <button
             type="button"
             onClick={() => setIsExpanded(true)}
-            className="flex items-center gap-2.5 px-3 py-1.5 rounded-md bg-[#090d16]/95 hover:bg-[#0d1424] border border-cyan-500/25 hover:border-cyan-400/50 shadow-[0_4px_16px_rgba(0,0,0,0.6)] hover:shadow-[0_0_12px_rgba(0,229,255,0.2)] transition-all duration-200 group cursor-pointer backdrop-blur-md"
+            className="flex items-center gap-2.5 px-3 py-1.5 rounded-md bg-[#090d16]/95 hover:bg-[#0d1424] border border-cyan-500/30 hover:border-cyan-400 shadow-[0_4px_16px_rgba(0,0,0,0.7)] hover:shadow-[0_0_12px_rgba(0,229,255,0.3)] transition-all duration-200 group cursor-pointer backdrop-blur-md"
             title="Open Orion Telemetry Terminal Drawer"
           >
             <span className="font-mono text-xs font-bold text-gray-300 group-hover:text-cyan-300 tracking-wider">
@@ -261,7 +261,7 @@ export const TelemetryTerminal: React.FC<TelemetryTerminalProps> = ({ wsUrl = DE
 
       {/* 2. SLIDE-UP TERMINAL DRAWER (Integrated IDE Developer Drawer) */}
       <div 
-        className={`fixed bottom-0 left-0 right-0 z-40 flex flex-col pointer-events-auto transition-all duration-300 overflow-hidden shadow-[0_-12px_32px_rgba(0,0,0,0.85)] ${
+        className={`fixed bottom-0 left-0 right-0 z-[160] flex flex-col pointer-events-auto transition-all duration-300 overflow-hidden shadow-[0_-12px_32px_rgba(0,0,0,0.85)] ${
           isExpanded ? 'h-[38vh]' : 'h-0 pointer-events-none'
         }`}
         style={{

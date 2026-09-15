@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain } from 'electron'; 
 import * as fs from 'fs';
+import * as http from 'http';
 import * as path from 'path'; 
 import { BootstrapEngine } from './core/BootstrapEngine'; 
 import { DatabaseEngine } from './database/DatabaseEngine'; 
@@ -177,10 +178,36 @@ function createWindow(): void {
     }, 
   }); 
 
-  // FORCED FIX: Bypass dev server and natively load the static production index HTML
-  Logger.getInstance().info('Kernel', 'Loading static production asset build directly from renderer/out/index.html');
-  mainWindow.loadFile(path.join(__dirname, '../../renderer/out/index.html')).catch((err) => {
-    Logger.getInstance().error('Kernel', `Failed to load static index HTML file: ${err}`);
+  const staticHtmlPath = path.join(__dirname, '../../renderer/out/index.html');
+  const devServerUrl = 'http://localhost:3000';
+
+  const loadStatic = () => {
+    Logger.getInstance().info('Kernel', 'Loading static production asset build directly from renderer/out/index.html');
+    mainWindow?.loadFile(staticHtmlPath).catch((err) => {
+      Logger.getInstance().error('Kernel', `Failed to load static index HTML file: ${err}`);
+    });
+  };
+
+  // Detect whether Next.js development server is running on localhost:3000 for instant hot reload
+  const req = http.get(devServerUrl, (res) => {
+    if (res.statusCode && res.statusCode < 400) {
+      Logger.getInstance().info('Kernel', `Next.js dev server detected on ${devServerUrl}. Loading live development URL for hot reload.`);
+      mainWindow?.loadURL(devServerUrl).catch((err) => {
+        Logger.getInstance().info('Kernel', `Failed to load dev URL: ${err}. Falling back to static build.`);
+        loadStatic();
+      });
+    } else {
+      loadStatic();
+    }
+  });
+
+  req.on('error', () => {
+    loadStatic();
+  });
+
+  req.setTimeout(1200, () => {
+    req.destroy();
+    loadStatic();
   });
 
   mainWindow.once('ready-to-show', () => { 

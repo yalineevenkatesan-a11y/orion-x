@@ -530,7 +530,21 @@ export function WorkspaceLayout() {
   }, []);
   const [windowSize, setWindowSize] = useState({ width: 1920, height: 1080 });
   const [showOptions, setShowOptions] = useState(false);
-  const [showHyperDriveModal, setShowHyperDriveModal] = useState(false);
+  const [isHyperDriveOpen, setIsHyperDriveOpen] = useState(false);
+  const showHyperDriveModal = isHyperDriveOpen;
+  const setShowHyperDriveModal = setIsHyperDriveOpen;
+
+  useEffect(() => {
+    const handleOpenHyperDrive = () => setIsHyperDriveOpen(true);
+    const handleToggleHyperDrive = () => setIsHyperDriveOpen((prev) => !prev);
+    window.addEventListener('orion:open-hyperdrive', handleOpenHyperDrive);
+    window.addEventListener('orion:toggle-hyperdrive', handleToggleHyperDrive);
+    return () => {
+      window.removeEventListener('orion:open-hyperdrive', handleOpenHyperDrive);
+      window.removeEventListener('orion:toggle-hyperdrive', handleToggleHyperDrive);
+    };
+  }, []);
+
   const [activeView, setActiveView] = useState<string | null>(null);
   const [activeFile, setActiveFile] = useState<{name: string, content: string, path: string, nodeData?: any} | null>(null);
 
@@ -805,8 +819,9 @@ export function WorkspaceLayout() {
             <div className="absolute top-20 left-6 w-72 bg-[#15151C] border border-cyan-500/30 rounded-md z-50 overflow-hidden flex flex-col font-mono text-sm shadow-[0_10px_35px_rgba(0,0,0,0.85)] animate-fadeIn">
                 {/* Featured Option: HYPER-DRIVE MATRIX with glowing cyan icon */}
                 <div 
+                    id="menu-hyperdrive-matrix"
                     onClick={() => {
-                        setShowHyperDriveModal(true);
+                        setIsHyperDriveOpen(true);
                         setShowOptions(false);
                     }}
                     className="px-4 py-3 cursor-pointer text-cyan-300 hover:text-white bg-cyan-950/20 hover:bg-cyan-900/40 border-b border-cyan-500/30 flex items-center gap-2.5 font-bold tracking-wide transition-all group"
@@ -820,12 +835,14 @@ export function WorkspaceLayout() {
                     </span>
                 </div>
                 <div 
+                    id="menu-files-view"
                     onClick={() => { setActiveView('files'); setShowOptions(false); }}
                     className={`px-4 py-3 cursor-pointer ${activeView === 'files' ? 'bg-[#2A2A35] text-white' : 'text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26]'}`}
                 >
                     [DIR] Files View
                 </div>
                 <div 
+                    id="menu-system-query"
                     onClick={() => { setActiveView('search'); setShowOptions(false); }}
                     className={`px-4 py-3 cursor-pointer ${activeView === 'search' ? 'bg-[#2A2A35] text-white' : 'text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26]'}`}
                 >
@@ -1494,15 +1511,67 @@ export function WorkspaceLayout() {
         )}
       </div>
 
-          <style jsx global>{`
-            @keyframes loadingBar {
-              0% { width: 0%; transform: translateX(0%); }
-              50% { width: 70%; }
-              100% { width: 100%; }
-            }
-            .animate-loading-bar { animation: loadingBar 2s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
-          `}</style>
+        {/* Bottom Cyber Status Bar (Docked inside Main Workspace Layout) */}
+        <div className="h-7 w-full bg-[#07090E] border-t border-white/10 px-4 flex items-center justify-between z-30 select-none font-mono text-[11px] shrink-0 pointer-events-auto">
+          <div className="flex items-center gap-4 text-zinc-400">
+            <div className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_#00e5ff] animate-pulse" />
+              <span className="text-zinc-200 font-bold">ORION-X CORE</span>
+            </div>
+            <span className="text-zinc-600 hidden sm:inline">|</span>
+            <div className="hidden sm:flex items-center gap-1.5">
+              <span className="text-zinc-500">AST DAEMON:</span>
+              <span className="text-emerald-400 font-semibold">9042 LISTENING</span>
+            </div>
+            <span className="text-zinc-600 hidden md:inline">|</span>
+            <div className="hidden md:flex items-center gap-1.5">
+              <span className="text-zinc-500">ISOLATION:</span>
+              <span className="text-cyan-300 font-semibold">ROOTLESS OCI</span>
+            </div>
+            <span className="text-zinc-600 hidden md:inline">|</span>
+            <div className="hidden md:flex items-center gap-1.5">
+              <span className="text-zinc-500">PERSISTENCE:</span>
+              <span className="text-emerald-400 font-semibold">ONLINE</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* Quick Trigger: Hyper-Drive Matrix */}
+            <button
+              type="button"
+              onClick={() => setIsHyperDriveOpen(true)}
+              className="flex items-center gap-1 px-2.5 py-0.5 rounded bg-cyan-950/40 hover:bg-cyan-900/60 border border-cyan-500/30 text-cyan-300 hover:text-white transition-colors cursor-pointer text-[10px] font-bold"
+              title="Open Hyper-Drive Matrix"
+            >
+              <span>◈</span>
+              <span>HYPER-DRIVE</span>
+            </button>
+
+            {/* Quick Trigger: Telemetry Terminal */}
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('orion:open-terminal'))}
+              className="flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-[#090d16] hover:bg-[#0d1424] border border-cyan-500/30 hover:border-cyan-400 text-cyan-300 hover:text-white transition-colors cursor-pointer text-[10px] font-bold shadow-[0_0_8px_rgba(0,229,255,0.2)]"
+              title="Open Telemetry Terminal Drawer"
+            >
+              <span>&gt;_</span>
+              <span>TERMINAL</span>
+            </button>
+          </div>
         </div>
+
+        {/* Live Streaming Telemetry Terminal Drawer */}
+        <TelemetryTerminal />
+
+        <style jsx global>{`
+          @keyframes loadingBar {
+            0% { width: 0%; transform: translateX(0%); }
+            50% { width: 70%; }
+            100% { width: 100%; }
+          }
+          .animate-loading-bar { animation: loadingBar 2s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+        `}</style>
+      </div>
 
 
 
@@ -1572,12 +1641,9 @@ export function WorkspaceLayout() {
 
       {/* Hyper-Drive Control Modal */}
       <HyperDriveMatrix 
-        isOpen={showHyperDriveModal}
-        onClose={() => setShowHyperDriveModal(false)}
+        isOpen={isHyperDriveOpen}
+        onClose={() => setIsHyperDriveOpen(false)}
       />
-
-      {/* Live Streaming Telemetry Terminal Drawer */}
-      <TelemetryTerminal />
     </>
   );
 }
