@@ -3908,7 +3908,7 @@ function NeuralGraphDashboardInner() {
     setIsAuditModalOpen(true);
   }, [nodes, links, playCyberTone]);
 
-  // Listen to OPTIONS dropdown events: Export HUD and Run Repo Audit
+  // Listen to OPTIONS dropdown events: Export HUD, Run Repo Audit, and Sandbox Execution
   useEffect(() => {
     const handleExportHud = () => {
       exportCanvasSnapshot();
@@ -3916,11 +3916,63 @@ function NeuralGraphDashboardInner() {
     const handleTriggerAudit = () => {
       handleRunRepoAudit();
     };
+    const handleSandboxStatus = (e: any) => {
+      const { targetFiles = [], passedFiles = [], failedFiles = [] } = e.detail || {};
+      setNodes(prev => prev.map(n => {
+        const normPath = (n.path || '').toLowerCase().replace(/\\/g, '/');
+        const normLabel = (n.label || '').toLowerCase();
+        const matches = (list: string[]) => list.some(item => {
+          const normItem = item.toLowerCase().replace(/\\/g, '/');
+          return normPath.endsWith(normItem) || normItem.endsWith(normPath) || normLabel === normItem || normLabel.includes(normItem);
+        });
+
+        if (matches(failedFiles)) {
+          return { ...n, health: 'critical', isGitModified: false };
+        }
+        if (matches(passedFiles)) {
+          return { ...n, health: 'healthy', isGitModified: false };
+        }
+        if (matches(targetFiles)) {
+          return { ...n, health: 'warning', isGitModified: true };
+        }
+        return n;
+      }));
+    };
+
+    const handleAgentStep = (e: any) => {
+      const { step, nodes: targetList = [] } = e.detail || {};
+      setNodes(prev => prev.map(n => {
+        const normPath = (n.path || '').toLowerCase().replace(/\\/g, '/');
+        const normLabel = (n.label || '').toLowerCase();
+        const matches = targetList.some((item: string) => {
+          const normItem = item.toLowerCase().replace(/\\/g, '/');
+          return normPath.endsWith(normItem) || normItem.endsWith(normPath) || normLabel === normItem || normLabel.includes(normItem);
+        });
+
+        if (!matches) return n;
+
+        if (step === 'DEV_PATCH') {
+          return { ...n, health: 'warning', isGitModified: true };
+        }
+        if (step === 'TEST_FAIL') {
+          return { ...n, health: 'critical', isGitModified: false };
+        }
+        if (step === 'TEST_PASS') {
+          return { ...n, health: 'healthy', isGitModified: false };
+        }
+        return n;
+      }));
+    };
+
     window.addEventListener('orion:export-hud', handleExportHud);
     window.addEventListener('orion:run-repo-audit', handleTriggerAudit);
+    window.addEventListener('orion:sandbox-status', handleSandboxStatus);
+    window.addEventListener('orion:agent-step', handleAgentStep);
     return () => {
       window.removeEventListener('orion:export-hud', handleExportHud);
       window.removeEventListener('orion:run-repo-audit', handleTriggerAudit);
+      window.removeEventListener('orion:sandbox-status', handleSandboxStatus);
+      window.removeEventListener('orion:agent-step', handleAgentStep);
     };
   }, [exportCanvasSnapshot, handleRunRepoAudit]);
 

@@ -12,6 +12,8 @@ import { ProjectSidebar } from '../sidebar/ProjectSidebar';
 import { AiManagementPanel } from './AiManagementPanel';
 import { getFileType } from '@/utils/fileTypes';
 import { BinaryFilePreview } from './BinaryFilePreview';
+import { HyperDriveMatrix } from './HyperDriveMatrix';
+import { TelemetryTerminal } from './TelemetryTerminal';
 
 import { useWorkspaceUi } from '../../context/WorkspaceUiContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -528,6 +530,7 @@ export function WorkspaceLayout() {
   }, []);
   const [windowSize, setWindowSize] = useState({ width: 1920, height: 1080 });
   const [showOptions, setShowOptions] = useState(false);
+  const [showHyperDriveModal, setShowHyperDriveModal] = useState(false);
   const [activeView, setActiveView] = useState<string | null>(null);
   const [activeFile, setActiveFile] = useState<{name: string, content: string, path: string, nodeData?: any} | null>(null);
 
@@ -660,6 +663,39 @@ export function WorkspaceLayout() {
     }
   }, [activeView, activeWorkspace?.path]);
 
+  // Synchronize file tree health with Sandbox status events
+  useEffect(() => {
+    const handleSandboxStatus = (e: any) => {
+      const { targetFiles = [], passedFiles = [], failedFiles = [] } = e.detail || {};
+      const updateNode = (node: any): any => {
+        if (!node) return node;
+        let health = node.health;
+        const normPath = (node.path || '').toLowerCase().replace(/\\/g, '/');
+        const normName = (node.name || '').toLowerCase();
+        const matches = (list: string[]) => list.some(item => {
+          const normItem = item.toLowerCase().replace(/\\/g, '/');
+          return normPath.endsWith(normItem) || normItem.endsWith(normPath) || normName === normItem || normName.includes(normItem);
+        });
+
+        if (matches(failedFiles)) {
+          health = 'critical';
+        } else if (matches(passedFiles)) {
+          health = 'healthy';
+        } else if (matches(targetFiles)) {
+          health = 'warning';
+        }
+
+        const newChildren = node.children ? node.children.map(updateNode) : undefined;
+        return { ...node, health, children: newChildren };
+      };
+
+      setFileTree((prev: any) => prev ? updateNode(prev) : prev);
+    };
+
+    window.addEventListener('orion:sandbox-status', handleSandboxStatus);
+    return () => window.removeEventListener('orion:sandbox-status', handleSandboxStatus);
+  }, []);
+
   const filteredFileTree = useMemo(() => {
     if (!fileTree) return null;
     if (!fileSearchQuery.trim() && selectedExtensions.length === 0 && selectedHealth.length === 0) return fileTree;
@@ -766,7 +802,23 @@ export function WorkspaceLayout() {
         </div>
 
         {showOptions && (
-            <div className="absolute top-20 left-6 w-64 bg-[#15151C] border border-[#2A2A35] rounded-md z-50 overflow-hidden flex flex-col font-mono text-sm shadow-2xl">
+            <div className="absolute top-20 left-6 w-72 bg-[#15151C] border border-cyan-500/30 rounded-md z-50 overflow-hidden flex flex-col font-mono text-sm shadow-[0_10px_35px_rgba(0,0,0,0.85)] animate-fadeIn">
+                {/* Featured Option: HYPER-DRIVE MATRIX with glowing cyan icon */}
+                <div 
+                    onClick={() => {
+                        setShowHyperDriveModal(true);
+                        setShowOptions(false);
+                    }}
+                    className="px-4 py-3 cursor-pointer text-cyan-300 hover:text-white bg-cyan-950/20 hover:bg-cyan-900/40 border-b border-cyan-500/30 flex items-center gap-2.5 font-bold tracking-wide transition-all group"
+                >
+                    <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_10px_#00e5ff] animate-pulse" />
+                    <svg className="w-4 h-4 text-cyan-400 group-hover:drop-shadow-[0_0_8px_#00e5ff] transition-all" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                    </svg>
+                    <span className="text-cyan-400 group-hover:text-cyan-200 tracking-wider text-xs">
+                      [ HYPER-DRIVE MATRIX ]
+                    </span>
+                </div>
                 <div 
                     onClick={() => { setActiveView('files'); setShowOptions(false); }}
                     className={`px-4 py-3 cursor-pointer ${activeView === 'files' ? 'bg-[#2A2A35] text-white' : 'text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26]'}`}
@@ -777,7 +829,7 @@ export function WorkspaceLayout() {
                     onClick={() => { setActiveView('search'); setShowOptions(false); }}
                     className={`px-4 py-3 cursor-pointer ${activeView === 'search' ? 'bg-[#2A2A35] text-white' : 'text-[#A0AEC0] hover:text-white hover:bg-[#1E1E26]'}`}
                 >
-                    Global Search
+                    [ SYSTEM QUERY ]
                 </div>
                 <div 
                     onClick={() => {
@@ -1138,7 +1190,7 @@ export function WorkspaceLayout() {
                         >
                             <div>
                                 <div className="flex items-center gap-2">
-                                    <h2 className="text-white font-bold tracking-widest text-sm font-mono">[ GLOBAL SEARCH ]</h2>
+                                    <h2 className="text-white font-bold tracking-widest text-sm font-mono">[ SYSTEM QUERY ]</h2>
                                     <span className="text-[10px] text-[#64748B] font-mono tracking-wider">[DRAGGABLE]</span>
                                 </div>
                                 <p className="text-[#64748B] text-xs font-mono mt-1">Cross-Vault Knowledge & Node Index</p>
@@ -1517,6 +1569,15 @@ export function WorkspaceLayout() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Hyper-Drive Control Modal */}
+      <HyperDriveMatrix 
+        isOpen={showHyperDriveModal}
+        onClose={() => setShowHyperDriveModal(false)}
+      />
+
+      {/* Live Streaming Telemetry Terminal Drawer */}
+      <TelemetryTerminal />
     </>
   );
 }

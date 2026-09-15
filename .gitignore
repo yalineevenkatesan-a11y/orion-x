@@ -12,4 +12,8 @@ renderer/.next/
 renderer/out/
 main/dist/
 downloads/
+.orion/
+.venv/
+__pycache__/
+*.pyc
 
